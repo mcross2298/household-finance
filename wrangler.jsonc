@@ -1,0 +1,15 @@
+// Optional Cloudflare Workers deployment — static assets only, no server code.
+// This lets you host the app as an installable PWA. It is not required: the app
+// also runs by opening index.html directly or serving the folder over HTTP.
+//
+// The app stores all data on-device, so a hosted copy contains none of your
+// figures. If you'd still prefer to keep the deployment private, you can put it
+// behind Cloudflare Access (Worker → Settings → Domains & Routes) and allow-list
+// specific emails.
+{
+  "name": "household-finance",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "."
+  }
+}

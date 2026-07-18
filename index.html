@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1F3864">
+  <meta name="description" content="Household Finance — a private, offline-first money command center">
+  <title>Household Finance</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('householdFinance.theme');
+        if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) { /* private mode etc — falls back to the OS preference */ }
+    })();
+  </script>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Household Finance">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Desktop sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div>
+          <div class="brand-name">Household Finance</div>
+          <div class="brand-sub">Command Center</div>
+        </div>
+        <button id="theme-toggle-desktop" class="theme-toggle sidebar-theme-toggle" aria-label="Toggle dark mode"></button>
+      </div>
+      <nav class="side-nav" aria-label="Main">
+        <button class="side-search" id="search-btn-desktop"><span class="nav-ico" data-icon="search"></span>Search<kbd>/</kbd></button>
+        <a href="#/home" data-route="home"><span class="nav-ico" data-icon="home"></span>Dashboard</a>
+        <a href="#/transactions" data-route="transactions"><span class="nav-ico" data-icon="list"></span>Transactions</a>
+        <a href="#/import" data-route="import"><span class="nav-ico" data-icon="upload"></span>Import</a>
+        <div class="side-nav-label">Plan</div>
+        <a href="#/budget" data-route="budget"><span class="nav-ico" data-icon="grid"></span>Budget</a>
+        <a href="#/calendar" data-route="calendar"><span class="nav-ico" data-icon="calendar"></span>Bill Calendar</a>
+        <a href="#/goals" data-route="goals"><span class="nav-ico" data-icon="target"></span>Savings Goals</a>
+        <a href="#/house" data-route="house"><span class="nav-ico" data-icon="house"></span>House Plan</a>
+        <a href="#/invest" data-route="invest"><span class="nav-ico" data-icon="trend"></span>Investments</a>
+        <a href="#/networth" data-route="networth"><span class="nav-ico" data-icon="bank"></span>Net Worth</a>
+        <a href="#/forecast" data-route="forecast"><span class="nav-ico" data-icon="trend"></span>Forecast</a>
+        <a href="#/wedding" data-route="wedding"><span class="nav-ico" data-icon="sparkle"></span>Wedding Payoff</a>
+        <div class="side-nav-label">Data</div>
+        <a href="#/backup" data-route="backup"><span class="nav-ico" data-icon="exchange"></span>Export &amp; Backup</a>
+      </nav>
+      <div class="side-foot" id="side-foot"></div>
+    </aside>
+
+    <div class="main-col">
+      <!-- Mobile top bar -->
+      <header class="topbar">
+        <div class="brand-mark small" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div class="topbar-title" id="topbar-title">Household Finance</div>
+        <button id="search-btn-mobile" class="topbar-search" aria-label="Search"><span data-icon="search"></span></button>
+        <button id="theme-toggle-mobile" class="theme-toggle" aria-label="Toggle dark mode"></button>
+      </header>
+
+      <main id="view" class="view" tabindex="-1"></main>
+
+      <!-- Mobile bottom nav -->
+      <nav class="bottom-nav" aria-label="Main">
+        <a href="#/home" data-route="home"><span class="nav-ico" data-icon="home"></span><span>Home</span></a>
+        <a href="#/transactions" data-route="transactions"><span class="nav-ico" data-icon="list"></span><span>Activity</span></a>
+        <a href="#/import" data-route="import" class="nav-import"><span class="nav-ico big" data-icon="upload"></span><span>Import</span></a>
+        <a href="#/plan" data-route="plan"><span class="nav-ico" data-icon="stack"></span><span>Plan</span></a>
+        <a href="#/backup" data-route="backup"><span class="nav-ico" data-icon="exchange"></span><span>Data</span></a>
+      </nav>
+    </div>
+  </div>
+
+  <button id="fab-add" class="fab" aria-label="Quick add transaction">＋</button>
+
+  <div id="tooltip" class="chart-tip" role="status" aria-hidden="true"></div>
+  <div id="modal-root"></div>
+  <div id="toast-root"></div>
+
+  <script src="js/store.js"></script>
+  <script src="js/icons.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/views/dashboard.js"></script>
+  <script src="js/views/transactions.js"></script>
+  <script src="js/views/import.js"></script>
+  <script src="js/views/budget.js"></script>
+  <script src="js/views/calendar.js"></script>
+  <script src="js/views/networth.js"></script>
+  <script src="js/views/forecast.js"></script>
+  <script src="js/views/goals.js"></script>
+  <script src="js/views/house.js"></script>
+  <script src="js/views/invest.js"></script>
+  <script src="js/views/wedding.js"></script>
+  <script src="js/views/plan.js"></script>
+  <script src="js/views/backup.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
