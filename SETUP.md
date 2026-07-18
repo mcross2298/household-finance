@@ -42,8 +42,8 @@ Skip this if you already have one.
 
 ## Part 2 — Get the app's code into your own private repository
 
-1. Go to the template repository page you were given (the link to this project
-   on GitHub).
+1. 1. Go to **[github.com/mcross2298/household-finance](https://github.com/mcross2298/household-finance)**
+   — the template repository.
 2. Click the green **Use this template** button near the top of the page
    (if you don't see this button, see the "No 'Use this template' button?" note
    below).
