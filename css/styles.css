@@ -296,6 +296,7 @@ a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 
 .insight-arrow { font-size: 1.2rem; color: var(--ink-3); flex-shrink: 0; }
 .insights-card > .insight-item { display: flex; align-items: center; gap: 10px; padding: 4px 2px 8px; }
 .insights-card > .insight-item .insight-text { color: var(--ink-2); font-size: .88rem; }
+.insight-action { margin: 0 2px 10px 32px; }
 
 /* ---------- buttons / inputs ---------- */
 .btn {
@@ -528,6 +529,34 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   .modal { border-radius: 16px; }
 }
 @keyframes slide-up { from { transform: translateY(30px); opacity: 0; } }
+
+/* ---------- app lock ---------- */
+.lock-gate {
+  position: fixed; inset: 0; z-index: 500;
+  background: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px calc(24px + env(safe-area-inset-right, 0px)) calc(24px + var(--sab)) calc(24px + env(safe-area-inset-left, 0px));
+  padding-top: calc(24px + var(--sat));
+}
+.lock-card {
+  background: var(--surface); color: var(--ink); border-radius: var(--radius); box-shadow: var(--shadow);
+  width: 100%; max-width: 340px; padding: 30px 26px 26px; text-align: center;
+}
+.lock-ico { font-size: 2.3rem; margin-bottom: 8px; }
+.lock-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 4px; }
+.lock-sub { font-size: .84rem; color: var(--ink-2); margin-bottom: 18px; }
+.lock-pin { text-align: center; letter-spacing: .5em; font-size: 1.3rem; padding-left: 22px; }
+.lock-error { color: var(--bad); font-size: .82rem; min-height: 1.3em; margin-top: 10px; }
+.lock-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.lock-actions .btn { width: 100%; }
+.lock-forgot { margin-top: 16px; }
+.lock-forgot button { background: none; border: none; color: var(--ink-3); text-decoration: underline; font-size: .8rem; cursor: pointer; padding: 6px; }
+.lock-card.shake { animation: lock-shake .32s; }
+@keyframes lock-shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+@media (prefers-reduced-motion: reduce) {
+  .lock-card.shake { animation: none; }
+}
+
 .modal-head {
   display: flex; justify-content: space-between; align-items: center;
   padding: 14px 18px 8px; position: sticky; top: 0; background: var(--surface);

@@ -119,6 +119,12 @@
     root.querySelector('#dash-month').addEventListener('change', e => {
       selectedMonth = e.target.value; App.render();
     });
+    root.querySelectorAll('[data-review]').forEach(btn =>
+      btn.addEventListener('click', e => {
+        e.preventDefault(); e.stopPropagation();
+        Store.markSubscriptionReviewed(btn.dataset.review);
+        App.render(); App.toast('Marked reviewed');
+      }));
     const cmpSel = root.querySelector('#cmp-basis');
     if (cmpSel) cmpSel.addEventListener('change', e => { cmpBasis = e.target.value; App.render(); });
     root.querySelectorAll('[data-cmp-cat]').forEach(tr =>
@@ -175,6 +181,7 @@
             <span class="insight-text">${App.esc(i.text)}</span>
             <span class="insight-arrow" aria-hidden="true">›</span>
           </a>
+          ${i.reviewKey ? `<button class="btn ghost sm insight-action" data-review="${App.esc(i.reviewKey)}">Mark reviewed</button>` : ''}
         </li>`).join('')}
       </ul>
     </section>`;

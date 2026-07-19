@@ -36,6 +36,16 @@
         </section>
 
         <section class="card">
+          <div class="card-head"><h2>Privacy &amp; Lock</h2>
+            <span class="card-note">${Lock.isEnabled() ? 'on · auto-lock ' + Lock.getTimeoutMin() + ' min' : 'off'}</span></div>
+          <p class="help">A PIN (and Face ID/Touch ID, where this phone supports it) between whoever
+             picks up this phone and your balances. It's a lock on the door, not encryption — data in
+             this browser is unchanged either way. <b>There is no bypass for a forgotten PIN</b> — the
+             only way back in is restoring a JSON backup, so keep one current.</p>
+          <div id="lock-status-body"></div>
+        </section>
+
+        <section class="card">
           <div class="card-head"><h2>About this data</h2></div>
           <p class="help">Data lives only in this browser (localStorage) — nothing is sent anywhere.
              That means: back up before clearing browser data, and export a backup any time
@@ -93,5 +103,100 @@
         'This wipes all data on this device and reloads the sample demo household. Export a backup first if in doubt.',
         'Reset', () => { S.reset(); App.render(); App.toast('Reset to demo data'); });
     });
+
+    renderLockStatus(root.querySelector('#lock-status-body'));
   };
+
+  function pinModalMarkup(fields) {
+    return fields.map(f => `
+      <label>${f.label}
+        <input class="input" id="${f.id}" type="password" inputmode="numeric"
+          pattern="[0-9]*" minlength="4" maxlength="8" autocomplete="off">
+      </label>`).join('') + '<div class="lock-error" id="lp-err" role="alert"></div>';
+  }
+
+  function openSetupPinModal() {
+    const m = App.modal('Turn on app lock', `
+      <p class="help">Choose a 4–8 digit PIN. You'll need it (or Face ID/Touch ID, if enabled below)
+         whenever the app has been closed or idle a few minutes.</p>
+      ${pinModalMarkup([{ label: 'New PIN', id: 'lp-new' }, { label: 'Confirm PIN', id: 'lp-confirm' }])}
+      <div class="btn-row"><button class="btn gold" id="lp-save">Turn on</button></div>`);
+    m.el.querySelector('#lp-save').addEventListener('click', async () => {
+      const a = m.el.querySelector('#lp-new').value.trim();
+      const b = m.el.querySelector('#lp-confirm').value.trim();
+      const err = m.el.querySelector('#lp-err');
+      if (!/^\d{4,8}$/.test(a)) { err.textContent = 'PIN must be 4–8 digits.'; return; }
+      if (a !== b) { err.textContent = "PINs don't match."; return; }
+      await Lock.setup(a);
+      m.close(); App.render(); App.toast('App lock turned on');
+    });
+  }
+
+  function openChangePinModal() {
+    const m = App.modal('Change PIN', `
+      ${pinModalMarkup([{ label: 'Current PIN', id: 'lp-old' }, { label: 'New PIN', id: 'lp-new' }, { label: 'Confirm new PIN', id: 'lp-confirm' }])}
+      <div class="btn-row"><button class="btn gold" id="lp-save">Save</button></div>`);
+    m.el.querySelector('#lp-save').addEventListener('click', async () => {
+      const old = m.el.querySelector('#lp-old').value.trim();
+      const a = m.el.querySelector('#lp-new').value.trim();
+      const b = m.el.querySelector('#lp-confirm').value.trim();
+      const err = m.el.querySelector('#lp-err');
+      if (!/^\d{4,8}$/.test(a)) { err.textContent = 'New PIN must be 4–8 digits.'; return; }
+      if (a !== b) { err.textContent = "PINs don't match."; return; }
+      const ok = await Lock.changePin(old, a);
+      if (!ok) { err.textContent = 'Current PIN is wrong.'; return; }
+      m.close(); App.toast('PIN changed');
+    });
+  }
+
+  function renderLockStatus(slot) {
+    if (!slot) return;
+    if (!Lock.isEnabled()) {
+      slot.innerHTML = `<div class="btn-row"><button class="btn gold" id="lock-enable">🔒 Turn on app lock</button></div>`;
+      slot.querySelector('#lock-enable').addEventListener('click', openSetupPinModal);
+      return;
+    }
+    const min = Lock.getTimeoutMin();
+    slot.innerHTML = `
+      <div class="form-grid">
+        <label>Auto-lock after
+          <select class="select" id="lock-timeout">
+            ${[1, 5, 15, 30].map(v => `<option value="${v}"${v === min ? ' selected' : ''}>${v} minute${v === 1 ? '' : 's'}</option>`).join('')}
+          </select>
+        </label>
+      </div>
+      <div class="btn-row">
+        <button class="btn ghost" id="lock-change-pin">Change PIN</button>
+        <button class="btn danger ghost" id="lock-disable">Turn off app lock</button>
+      </div>
+      <div id="lock-bio-slot" class="btn-row"></div>`;
+    slot.querySelector('#lock-timeout').addEventListener('change', e => {
+      Lock.setTimeoutMin(e.target.value);
+      App.toast('Auto-lock updated');
+    });
+    slot.querySelector('#lock-change-pin').addEventListener('click', openChangePinModal);
+    slot.querySelector('#lock-disable').addEventListener('click', () => {
+      App.confirmDialog('Turn off app lock', 'The app will open unlocked from now on.', 'Turn off', () => {
+        Lock.disable(); App.render(); App.toast('App lock turned off');
+      });
+    });
+    Lock.webauthnAvailable().then(avail => {
+      const bioSlot = slot.querySelector('#lock-bio-slot');
+      if (!bioSlot || !avail) return;
+      if (Lock.hasBiometric()) {
+        bioSlot.innerHTML = `<button class="btn ghost sm" id="lock-bio-off">Turn off Face ID / Touch ID</button>`;
+        bioSlot.querySelector('#lock-bio-off').addEventListener('click', () => {
+          App.confirmDialog('Turn off Face ID / Touch ID', 'PIN-only from now on.', 'Turn off', () => {
+            Lock.removeBiometric(); App.toast('Biometric unlock turned off'); App.render();
+          });
+        });
+      } else {
+        bioSlot.innerHTML = `<button class="btn ghost sm" id="lock-bio-on">Also allow Face ID / Touch ID</button>`;
+        bioSlot.querySelector('#lock-bio-on').addEventListener('click', async () => {
+          try { await Lock.registerBiometric(); App.toast('Face ID / Touch ID enabled'); App.render(); }
+          catch (e) { App.toast('Could not enable — try again', 'warn'); }
+        });
+      }
+    });
+  }
 })();

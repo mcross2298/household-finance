@@ -274,6 +274,7 @@
     const S = Store;
     const s = S.monthSummary(ym);
     const over = s.spent > s.budget;
+    const rolled = S.data.budget.filter(b => b.type === 'Discretionary' && b.rolloverEnabled);
     App.modal(S.fmtMonth(ym) + ' — month in review', `
       <div class="close-summary">
         <div class="close-summary-hero${over ? ' over' : ''}">
@@ -291,6 +292,16 @@
             ${s.closed ? `<tr><td>Closed</td><td class="num">${S.fmtDate(s.closed.closedAt.slice(0, 10))}</td></tr>` : ''}
           </tbody>
         </table>
+        ${rolled.length ? `
+        <p class="help" style="margin-top:10px">Envelope rollover — carrying into next month:</p>
+        <table class="table plain">
+          <tbody>
+            ${rolled.map(b => {
+              const bal = S.data.rolloverBalances[b.id] || 0;
+              return `<tr><td>${App.esc(b.name)}</td><td class="num"><span class="${bal >= 0 ? 'pos' : 'neg'}">${bal >= 0 ? '+' : ''}${S.fmt$(bal, 0)}</span></td></tr>`;
+            }).join('')}
+          </tbody>
+        </table>` : ''}
       </div>`);
   }
 })();

@@ -81,7 +81,7 @@
     };
 
     return {
-      version: 5,
+      version: 6,
       lastUpdated: new Date().toISOString(),
       needsExport: false,
       rules: [],
@@ -91,6 +91,8 @@
       accounts: accounts,
       snapshots: { [ym]: bal },
       planned: [],
+      rolloverBalances: {},
+      subReviewed: {},
       members: ['Alex', 'Sam'],
       incomes: { Alex: 4200, Sam: 3800 },
       budget: [
@@ -168,7 +170,7 @@
      so a backup from any version restores cleanly. */
   function migrate() {
     const v = +data.version || 1;
-    if (v >= 5) return;
+    if (v >= 6) return;
     if (v < 2) {
       data.rules = data.rules || [];
       data.importBatches = data.importBatches || [];
@@ -195,7 +197,11 @@
     }
     data.members = data.members || ['Mike', 'Bri'];
     data.incomes = data.incomes || {};
-    data.version = 5;
+    if (v < 6) {
+      data.rolloverBalances = data.rolloverBalances || {};
+      data.subReviewed = data.subReviewed || {};
+    }
+    data.version = 6;
     save();
   }
   function save() {
@@ -212,10 +218,11 @@
   function emptyState() {
     const now = new Date();
     return {
-      version: 5, lastUpdated: now.toISOString(), needsExport: false,
+      version: 6, lastUpdated: now.toISOString(), needsExport: false,
       rules: [], importBatches: [], closes: {},
       reminders: { enabled: false, daysAhead: 3, log: {} },
       accounts: [], snapshots: {}, planned: [],
+      rolloverBalances: {}, subReviewed: {},
       members: ['You'], incomes: { You: 0 },
       budget: [], transactions: [], goals: [],
       house: {
@@ -485,6 +492,14 @@
         href: txHref({ q: c.merchant })
       });
     }
+    for (const s of subscriptionNudges().slice(0, 2)) {
+      out.push({
+        tone: 'info',
+        text: `${s.merchant} has been ${fmt$(s.amount, 2)}/mo for ${s.months}+ months — still worth it?`,
+        href: txHref({ q: s.merchant }),
+        reviewKey: s.key
+      });
+    }
     const u = unusualTx(month)[0];
     if (u) {
       out.push({
@@ -576,12 +591,29 @@
     return Math.min(1, new Date().getDate() / daysInMonth(ym));
   }
 
-  /* THE number: what's genuinely left to spend this month — budget, minus what
-     has posted, minus Fixed bills that haven't hit yet (so rent money never
-     looks spendable just because rent hasn't cleared). */
+  /* Envelope rollover: a Discretionary line can opt in to carrying its
+     unspent (or overspent) balance into next month instead of resetting to
+     the flat monthly figure. rolloverBalances is a running tally per line,
+     updated only at month close — effectiveBudget is what's actually
+     available THIS month once that carry is added on top. */
+  function effectiveBudget(b) {
+    return (+b.monthly || 0) + (b.rolloverEnabled ? (data.rolloverBalances[b.id] || 0) : 0);
+  }
+  function rolloverAdjustmentTotal() {
+    let t = 0;
+    for (const b of data.budget) {
+      if (b.type === 'Discretionary' && b.rolloverEnabled) t += (data.rolloverBalances[b.id] || 0);
+    }
+    return t;
+  }
+
+  /* THE number: what's genuinely left to spend this month — budget (plus any
+     envelope rollover), minus what has posted, minus Fixed bills that haven't
+     hit yet (so rent money never looks spendable just because rent hasn't
+     cleared). */
   function safeToSpend(ym) {
     const month = ym || thisMonth();
-    const budget = budgetTotal();
+    const budget = budgetTotal() + rolloverAdjustmentTotal();
     const spent = txInMonth(month).reduce((s, t) => s + (+t.amount || 0), 0);
     const st = budgetLineStatus(month);
     let upcoming = 0, upcomingCount = 0;
@@ -649,6 +681,41 @@
       }
     }
     return out.sort((x, y) => (y.to - y.from) - (x.to - x.from));
+  }
+
+  /* Subscriptions that have charged the same stable price for 6+ straight
+     months — not a problem like priceCreeps, just old enough to deserve an
+     occasional "still worth it?" glance instead of renewing silently forever.
+     A merchant drops off the list once reviewed, until it charges again. */
+  function subscriptionNudges() {
+    const byKey = {};
+    for (const t of data.transactions) {
+      const key = merchantKey(t.description);
+      if (!key) continue;
+      const ym = t.date.slice(0, 7);
+      (byKey[key] = byKey[key] || {})[ym] = (byKey[key][ym] || []).concat(+t.amount || 0);
+    }
+    const reviewed = data.subReviewed || {};
+    const out = [];
+    for (const key in byKey) {
+      const months = Object.keys(byKey[key]).sort();
+      if (months.length < 6) continue;
+      const last6 = months.slice(-6);
+      const amounts = last6.map(m => byKey[key][m]);
+      if (amounts.some(a => a.length !== 1)) continue; // once-a-month charges only
+      const vals = amounts.map(a => a[0]);
+      const stable = vals.every(v => Math.abs(v - vals[0]) <= Math.max(0.5, vals[0] * 0.01));
+      if (!stable) continue;
+      const lastCharge = months[months.length - 1];
+      if (reviewed[key] && reviewed[key] >= lastCharge) continue;
+      out.push({ key, merchant: prettyMerchant(key), amount: vals[vals.length - 1], months: months.length });
+    }
+    return out.sort((a, b) => b.months - a.months);
+  }
+  function markSubscriptionReviewed(key) {
+    data.subReviewed = data.subReviewed || {};
+    data.subReviewed[key] = thisMonth();
+    save();
   }
 
   /* Unusually large transactions this month: well above the category's own
@@ -768,6 +835,27 @@
     if (first.length < 3) return null;
     return data.rules.find(r => r.match.split(' ')[0] === first) || null;
   }
+  /* A softer sibling to ruleFor: when nothing matches exactly or by first
+     token, look for the nearest already-learned merchant by token overlap.
+     Meant to prefill a best guess for review, not to auto-apply — the caller
+     marks it "suggested" rather than "auto" so it still gets a second look. */
+  function suggestRule(desc) {
+    // Compare on the same ≤2-token basis rule.match itself uses — matching
+    // against the full description would dilute the score with trailing
+    // city/state tokens that have nothing to do with the merchant.
+    const targetTokens = new Set(merchantKey(desc).split(' ').filter(Boolean));
+    if (!targetTokens.size) return null;
+    let best = null, bestScore = 0;
+    for (const r of data.rules) {
+      const rTokens = new Set(r.match.split(' ').filter(Boolean));
+      if (!rTokens.size) continue;
+      let overlap = 0;
+      for (const t of targetTokens) if (rTokens.has(t)) overlap++;
+      const score = overlap / Math.max(targetTokens.size, rTokens.size);
+      if (score > bestScore) { bestScore = score; best = r; }
+    }
+    return bestScore >= 0.5 ? best : null;
+  }
   /* Upsert by key: re-learning a merchant updates the existing rule in place. */
   function learnRule(desc, category, who) {
     const match = merchantKey(desc);
@@ -851,6 +939,34 @@
       }
     }
     return out;
+  }
+
+  /* A Fixed line flagged cashPay never arrives on a statement (cash, check,
+     autopay with no card trail) — matchBudgetLine can never see a transaction
+     for it, so it would sit "not posted" on the Budget/Calendar screens
+     forever. Posting it automatically, once, on/after its due day keeps that
+     screen honest without asking for a manual entry every month. Idempotent:
+     once posted, budgetLineStatus sees the new transaction and skips it. */
+  function autoPostDueBills() {
+    const month = thisMonth();
+    const dim = daysInMonth(month);
+    const today = todayIso();
+    let posted = 0;
+    for (const b of data.budget) {
+      if (b.type !== 'Fixed' || !b.cashPay || !b.dueDay) continue;
+      const st = budgetLineStatus(month);
+      if (st[b.id] && st[b.id].posted) continue;
+      const due = month + '-' + String(Math.min(+b.dueDay, dim)).padStart(2, '0');
+      if (due > today) continue;
+      data.transactions.push({
+        id: uid(), date: due, category: b.category, description: b.name,
+        amount: +b.monthly || 0, who: b.section, account: 'Auto-posted',
+        notes: 'Auto-posted — cash-pay recurring bill'
+      });
+      posted++;
+    }
+    if (posted) { touchTransactions(); save(); }
+    return posted;
   }
 
   /* ---------- bill calendar, reminders & month-end close ---------- */
@@ -958,6 +1074,14 @@
     };
   }
   function closeMonth(ym) {
+    const st = budgetLineStatus(ym);
+    data.rolloverBalances = data.rolloverBalances || {};
+    for (const b of data.budget) {
+      if (b.type !== 'Discretionary' || !b.rolloverEnabled) continue;
+      const spent = (st[b.id] && st[b.id].spent) || 0;
+      const delta = (+b.monthly || 0) - spent;
+      data.rolloverBalances[b.id] = (data.rolloverBalances[b.id] || 0) + delta;
+    }
     data.closes[ym] = { closedAt: new Date().toISOString() };
     save();
   }
@@ -1137,14 +1261,16 @@
     goalsProgress, insights,
     parseCSV, exportCSV, csvEscape,
     monthPace, safeToSpend, avgSpendByCategory, categoryTrends, priceCreeps, unusualTx,
+    subscriptionNudges, markSubscriptionReviewed,
     prevMonth, nextMonth, daysInMonth, monthSchedule,
     dueForReminder, markReminded,
     closeChecklist, monthSummary, closeMonth,
     balanceAt, latestBalance, netWorthSeries, saveSnapshot, debtPayoff, forecast,
     debtStrategies, debtStrategiesSummary, debtPayoffOrder,
     normalizeMerchant, merchantKey, prettyMerchant,
-    ruleFor, learnRule, likelyDuplicate,
+    ruleFor, suggestRule, learnRule, likelyDuplicate,
     matchBudgetLine, budgetLineStatus,
+    effectiveBudget, rolloverAdjustmentTotal, autoPostDueBills,
     addImportBatch, undoImportBatch
   };
   load();

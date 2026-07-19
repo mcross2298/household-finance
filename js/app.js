@@ -241,7 +241,7 @@
     if (window.Views && Views.transactions && Views.transactions.openAdd) Views.transactions.openAdd();
   });
 
-  window.addEventListener('hashchange', () => render());
+  window.addEventListener('hashchange', () => { if (!(window.Lock && Lock.isLocked())) render(); });
   // Mobile Safari fires `resize` constantly while scrolling (the address bar
   // collapsing/expanding changes viewport height), so a full re-render tied
   // to every resize event made scrolling feel like the page kept restarting.
@@ -260,10 +260,19 @@
       }, 200);
     };
   })());
-  render();
-  checkReminders();
-
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-    navigator.serviceWorker.register('sw.js').catch(() => { /* offline install is best-effort */ });
+  function boot() {
+    const autoPosted = Store.autoPostDueBills();
+    render();
+    checkReminders();
+    if (autoPosted) toast(autoPosted + ' cash-pay bill' + (autoPosted === 1 ? '' : 's') + ' auto-posted for this month');
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      // updateViaCache: 'none' forces a real network fetch of sw.js on every check —
+      // without it, a host that doesn't send Cache-Control on sw.js can let the
+      // browser's ordinary HTTP cache mask a new deploy indefinitely, since the
+      // update algorithm's byte-comparison fetch would just hit that stale cache.
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+        .catch(() => { /* offline install is best-effort */ });
+    }
   }
+  if (window.Lock) Lock.guard(boot); else boot();
 })();
