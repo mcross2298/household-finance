@@ -81,7 +81,7 @@
     };
 
     return {
-      version: 7,
+      version: 8,
       lastUpdated: new Date().toISOString(),
       needsExport: false,
       rules: [],
@@ -94,6 +94,7 @@
       rolloverBalances: {},
       subReviewed: {},
       forecastScenarios: [],
+      streaksEnabled: false,
       members: ['Alex', 'Sam'],
       incomes: { Alex: 4200, Sam: 3800 },
       budget: [
@@ -172,7 +173,7 @@
      so a backup from any version restores cleanly. */
   function migrate() {
     const v = +data.version || 1;
-    if (v >= 7) return;
+    if (v >= 8) return;
     if (v < 2) {
       data.rules = data.rules || [];
       data.importBatches = data.importBatches || [];
@@ -207,7 +208,10 @@
       data.forecastScenarios = data.forecastScenarios || [];
       if (data.invest) data.invest.payFrequency = data.invest.payFrequency || 'biweekly';
     }
-    data.version = 7;
+    if (v < 8) {
+      if (!('streaksEnabled' in data)) data.streaksEnabled = false;
+    }
+    data.version = 8;
     save();
   }
   function save() {
@@ -224,11 +228,11 @@
   function emptyState() {
     const now = new Date();
     return {
-      version: 7, lastUpdated: now.toISOString(), needsExport: false,
+      version: 8, lastUpdated: now.toISOString(), needsExport: false,
       rules: [], importBatches: [], closes: {},
       reminders: { enabled: false, daysAhead: 3, log: {} },
       accounts: [], snapshots: {}, planned: [],
-      rolloverBalances: {}, subReviewed: {}, forecastScenarios: [],
+      rolloverBalances: {}, subReviewed: {}, forecastScenarios: [], streaksEnabled: false,
       members: ['You'], incomes: { You: 0 },
       budget: [], transactions: [], goals: [],
       house: {
@@ -379,6 +383,13 @@
   function spendByCategory(ym) {
     const map = {};
     for (const t of txInMonth(ym)) map[t.category] = (map[t.category] || 0) + (+t.amount || 0);
+    return map;
+  }
+  /* Daily totals for a month — the raw material for the Bill Calendar's
+     spending heatmap. Days with no transactions simply don't appear. */
+  function spendByDay(ym) {
+    const map = {};
+    for (const t of txInMonth(ym)) map[t.date] = (map[t.date] || 0) + (+t.amount || 0);
     return map;
   }
   function spendByWho(ym) {
@@ -1113,6 +1124,25 @@
     save();
   }
 
+  /* Consecutive closed months (most recent first) a Discretionary line stayed
+     at or under its flat monthly figure — a quiet, opt-in "still on track"
+     signal. Deliberately ignores rollover: rollover is about the dollars
+     carrying forward, this is about whether a given month, on its own, came
+     in under. Stops counting the moment a month breaks the streak. */
+  function underBudgetStreak(lineId) {
+    const line = data.budget.find(b => b.id === lineId);
+    if (!line || line.type !== 'Discretionary') return 0;
+    const closedMonths = Object.keys(data.closes).sort().reverse();
+    let streak = 0;
+    for (const ym of closedMonths) {
+      const st = budgetLineStatus(ym);
+      const spent = (st[lineId] && st[lineId].spent) || 0;
+      if (spent <= (+line.monthly || 0)) streak++;
+      else break;
+    }
+    return streak;
+  }
+
   /* ---------- net worth, debt payoff & cash-flow forecast ---------- */
 
   /* Latest known balance for an account at or before a month, carrying the most
@@ -1328,7 +1358,7 @@
     fmt$, fmtPct, fmtDate, fmtMonth, usDate, isoFromUs, thisMonth, MONTHS,
     budgetTotal, incomeTotal, surplus, savingsRate,
     budgetByCategory, budgetByPerson,
-    txInMonth, spendByCategory, spendByWho, monthsWithData,
+    txInMonth, spendByCategory, spendByWho, spendByDay, monthsWithData,
     goalMeta, houseScenario, weddingRemaining, rothMeta, hysaProjection,
     goalsProgress, insights,
     saveForecastScenario, deleteForecastScenario,
@@ -1343,7 +1373,7 @@
     normalizeMerchant, merchantKey, prettyMerchant,
     ruleFor, suggestRule, learnRule, likelyDuplicate,
     matchBudgetLine, budgetLineStatus,
-    effectiveBudget, rolloverAdjustmentTotal, autoPostDueBills,
+    effectiveBudget, rolloverAdjustmentTotal, autoPostDueBills, underBudgetStreak,
     addImportBatch, undoImportBatch
   };
   load();

@@ -31,6 +31,12 @@
       return `<span class="line-status${over ? ' over' : ''}">${S.fmt$(spent, 0)} of ${S.fmt$(eff, 0)}${rolled ? ' (rollover)' : ''} this month</span>`;
     };
 
+    const streakBadge = b => {
+      if (!S.data.streaksEnabled || b.type !== 'Discretionary') return '';
+      const streak = S.underBudgetStreak(b.id);
+      return streak >= 2 ? `<span class="streak-badge">🔥 ${streak}mo under</span>` : '';
+    };
+
     const section = sec => S.data.budget.filter(b => b.section === sec);
     const secBlock = sec => `
       <div class="budget-sec" id="budget-sec-${sec}">
@@ -42,7 +48,7 @@
           ${section(sec).map(b => `
             <li class="budget-row" data-id="${b.id}" role="button" tabindex="0">
               <div class="budget-main">
-                <span class="budget-name">${App.esc(b.name)}</span>
+                <span class="budget-name">${App.esc(b.name)}${streakBadge(b)}</span>
                 <span class="budget-meta">${App.esc(b.category)} · ${b.type}${b.dueDay ? ' · due day ' + b.dueDay : ''}${b.cashPay ? ' · cash-pay' : ''}${b.rolloverEnabled ? ' · rollover' : ''}${b.notes ? ' · ' + App.esc(b.notes) : ''}</span>
                 ${lineStatus(b)}
               </div>
@@ -83,6 +89,8 @@
           <div class="card-head"><h2>Recurring expenses</h2>
             ${p.section.Shared > 0 && S.members().length
               ? `<span class="card-note">Shared lines split evenly → ${S.members().map(n => `${App.esc(n)} ${S.fmt$(p.attributed[n], 0)}`).join(' · ')}</span>` : ''}</div>
+          <label class="checkline" style="margin-bottom:10px"><input type="checkbox" id="streaks-toggle"${S.data.streaksEnabled ? ' checked' : ''}>
+            🔥 Show under-budget streaks (2+ consecutive closed months)</label>
           ${secBlock('Shared')}${S.members().map(secBlock).join('')}
         </section>
       </div>`;
@@ -113,6 +121,10 @@
         });
       }));
     root.querySelector('#m-add').addEventListener('click', addMemberModal);
+    root.querySelector('#streaks-toggle').addEventListener('change', e => {
+      S.data.streaksEnabled = e.target.checked;
+      S.save(); App.render({ resetScroll: false });
+    });
     root.querySelector('#b-add').addEventListener('click', () => editModal(null));
     root.querySelectorAll('.budget-row').forEach(li =>
       li.addEventListener('click', () => {

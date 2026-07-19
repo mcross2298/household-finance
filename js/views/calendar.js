@@ -59,6 +59,8 @@
           : '<p class="empty">No dated bills this month yet — set due days below and they\'ll show up here.</p>'}
         </section>
 
+        ${heatmapSection(S, month)}
+
         ${undated.length ? `
         <section class="card">
           <div class="card-head"><h2>No due day set</h2><span class="card-note">tap a bill to place it on the calendar</span></div>
@@ -114,6 +116,37 @@
 
   const stat = (label, value, tone) =>
     `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value${tone ? ' ' + tone : ''}">${value}</div></div>`;
+
+  /* Day-by-day spend intensity for the displayed month — companion to the
+     bill schedule above: that answers "what's due," this answers "which
+     days actually spend." Intensity is relative to the month's own busiest
+     day, not an absolute scale, so a slow month still shows real contrast. */
+  function heatmapSection(S, month) {
+    const dayTotals = S.spendByDay(month);
+    const dim = S.daysInMonth(month);
+    const [y, mo] = month.split('-').map(Number);
+    const firstDow = new Date(y, mo - 1, 1).getDay();
+    const max = Math.max(1, ...Object.values(dayTotals));
+    const today = new Date().toISOString().slice(0, 10);
+    const cells = [];
+    for (let i = 0; i < firstDow; i++) cells.push('<div class="heatmap-cell empty" aria-hidden="true"></div>');
+    for (let d = 1; d <= dim; d++) {
+      const iso = month + '-' + String(d).padStart(2, '0');
+      const amt = dayTotals[iso] || 0;
+      const intensity = amt > 0 ? Math.max(0.15, Math.min(1, amt / max)) : 0;
+      cells.push(`<a class="heatmap-cell${iso === today ? ' today' : ''}" href="#/transactions?month=${month}"
+        style="--intensity:${intensity}" title="${S.fmtDate(iso)}: ${S.fmt$(amt, 0)}">
+        <span class="heatmap-day">${d}</span>
+      </a>`);
+    }
+    return `<section class="card">
+      <div class="card-head"><h2>Spending heatmap</h2><span class="card-note">darker = more spent that day</span></div>
+      <div class="heatmap-grid">
+        ${['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(d => `<div class="heatmap-dow">${d}</div>`).join('')}
+        ${cells.join('')}
+      </div>
+    </section>`;
+  }
 
   const STATUS = {
     done: ['good', '✓ posted'],

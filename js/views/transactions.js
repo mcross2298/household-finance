@@ -89,10 +89,32 @@
     </li>`;
   }
 
+  /* Up to N most-recently-used distinct merchants, most recent first — a
+     one-tap prefill so a repeat purchase (coffee, gas, groceries) doesn't
+     need the full form typed out one-handed. */
+  function recentMerchants(limit) {
+    const seen = new Set();
+    const out = [];
+    const sorted = [...Store.data.transactions].sort((a, b) => a.date < b.date ? 1 : -1);
+    for (const t of sorted) {
+      const key = Store.merchantKey(t.description);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(t);
+      if (out.length >= limit) break;
+    }
+    return out;
+  }
+
   function editModal(t) {
     const isNew = !t;
     const v = t || { date: new Date().toISOString().slice(0, 10), category: 'Groceries', description: '', amount: '', who: 'Shared', account: '', notes: '' };
+    const recents = isNew ? recentMerchants(6) : [];
     const m = App.modal(isNew ? 'Add Transaction' : 'Edit Transaction', `
+      ${recents.length ? `
+      <div class="qf-chips">
+        ${recents.map((r, i) => `<button type="button" class="qf-chip" data-qf="${i}">${App.esc(Store.prettyMerchant(r.description))} · ${Store.fmt$(r.amount, 2)}</button>`).join('')}
+      </div>` : ''}
       <div class="form-grid">
         <label>Date<input class="input" type="date" id="tx-date" value="${v.date}"></label>
         <label>Amount<input class="input" type="number" step="0.01" inputmode="decimal" id="tx-amount" value="${v.amount}" placeholder="0.00"></label>
@@ -109,6 +131,15 @@
         ${isNew ? '' : '<button class="btn danger ghost" id="tx-del">Delete</button>'}
       </div>`);
     const g = id => m.el.querySelector(id);
+    m.el.querySelectorAll('[data-qf]').forEach(btn => btn.addEventListener('click', () => {
+      const r = recents[+btn.dataset.qf];
+      g('#tx-amount').value = r.amount;
+      g('#tx-desc').value = r.description;
+      g('#tx-cat').value = r.category;
+      g('#tx-who').value = r.who;
+      g('#tx-account').value = r.account;
+      g('#tx-amount').focus();
+    }));
     g('#tx-save').addEventListener('click', () => {
       const amount = parseFloat(g('#tx-amount').value);
       const date = g('#tx-date').value;
