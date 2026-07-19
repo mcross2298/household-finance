@@ -81,11 +81,11 @@
         </div>
 
         <section class="card">
-          <div class="card-head"><h2>Debt payoff</h2><span class="card-note">at current payments · slide for extra</span></div>
+          <div class="card-head"><h2>Debt payoff</h2><a class="card-link" href="#/debt">Full payoff plan →</a></div>
           ${debts.some(d => (S.latestBalance(d.id) || 0) > 0)
             ? debts.map(payoffCard).join('')
             : '<p class="empty">Add debt balances in a snapshot and payoff dates appear here.</p>'}
-          <p class="help">Sliders are what-ifs — nothing changes until you actually raise the payment with your lender/bank.</p>
+          <p class="help">Sliders are what-ifs — nothing changes until you actually raise the payment with your lender/bank. For side-by-side Conservative/Base/Aggressive strategies across every debt, see the <a href="#/debt">Debt Payoff Plan</a>.</p>
         </section>
       </div>`;
 
@@ -146,7 +146,7 @@
   function acctModal(a, kind) {
     const isNew = !a;
     const v = a || { name: '', kind, type: kind === 'debt' ? 'Loan' : 'Checking', owner: 'Shared', payment: '', rate: '' };
-    const types = kind === 'debt' ? ['Loan', 'Credit Card', 'Other'] : ['Checking', 'Savings', 'Investment', 'Other'];
+    const types = kind === 'debt' ? Store.DEBT_TYPES : ['Checking', 'Savings', 'Investment', 'Other'];
     const m = App.modal((isNew ? 'Add ' : 'Edit ') + (kind === 'debt' ? 'debt' : 'asset'), `
       <div class="form-grid">
         <label class="span2">Name<input class="input" id="ac-name" value="${App.esc(v.name)}" placeholder="${kind === 'debt' ? 'e.g. Car Loan' : 'e.g. HYSA'}"></label>

@@ -419,6 +419,17 @@ input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--navy); }
 .goal-info { min-width: 0; }
 .goal-nums { font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 2px; }
 .goal-sub { font-size: .8rem; color: var(--ink-2); margin-top: 2px; }
+.goal-card.frozen { opacity: .64; }
+.goal-card.frozen .goal-ring { filter: grayscale(1); }
+
+/* Hold-to-unlock: a deliberate ~0.7s press so a frozen goal doesn't get
+   unpaused by an accidental tap. .holding animates the fill via the
+   transition set on .unlock-hold.holding .unlock-fill, timed to HOLD_MS in
+   goals.js — the two must stay in sync if either changes. */
+.unlock-hold { position: relative; overflow: hidden; background: var(--bg); color: var(--ink-2); border: 1.5px solid var(--line); width: 100%; justify-content: center; }
+.unlock-fill { position: absolute; inset: 0; background: var(--gold); transform: scaleX(0); transform-origin: left; }
+.unlock-hold.holding .unlock-fill { transition: transform .7s linear; transform: scaleX(1); }
+.unlock-label { position: relative; z-index: 1; }
 
 /* ---------- house ---------- */
 .assume-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }

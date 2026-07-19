@@ -3,12 +3,16 @@
   'use strict';
   window.Views = window.Views || {};
 
+  const HOLD_MS = 700;
+
   Views.goals = function (root) {
     const S = Store;
     const goals = S.data.goals;
-    const committed = goals.reduce((s, g) => s + (+g.monthly || 0), 0);
+    const frozen = goals.filter(g => g.isFrozen);
+    const ordered = goals.filter(g => !g.isFrozen).concat(frozen);
+    const progress = S.goalsProgress();
     const surplus = S.surplus();
-    const after = surplus - committed;
+    const after = surplus - progress.monthly;
 
     root.innerHTML = `
       <div class="page">
@@ -18,31 +22,39 @@
         </div>
 
         <section class="card card-navy stat-band">
-          ${stat('Total target', S.fmt$(goals.reduce((s, g) => s + (+g.target || 0), 0), 0))}
-          ${stat('Saved so far', S.fmt$(goals.reduce((s, g) => s + (+g.saved || 0), 0), 0))}
-          ${stat('Committed / mo', S.fmt$(committed, 0))}
+          ${stat('Active target', S.fmt$(progress.target, 0))}
+          ${stat('Saved so far', S.fmt$(progress.saved, 0))}
+          ${stat('Committed / mo', S.fmt$(progress.monthly, 0))}
           ${stat('Surplus after goals', S.fmt$(after, 0), after < 0 ? 'bad' : 'gold')}
         </section>
         ${after < 0 ? `<div class="callout warn">Goal contributions exceed your monthly surplus by <b>${S.fmt$(-after, 0)}</b>. Trim a contribution or the budget to bring it back in line.</div>` : ''}
+        ${frozen.length ? `<div class="callout">🧊 <b>${frozen.length}</b> goal${frozen.length > 1 ? 's' : ''} frozen — ${S.fmt$(progress.frozenMonthly, 0)}/mo paused and excluded from the totals above. Hold the lock on a card to unfreeze it.</div>` : ''}
 
         <div class="goal-grid">
-          ${goals.map(g => {
+          ${ordered.map(g => {
             const m = S.goalMeta(g);
-            return `<section class="card goal-card" data-id="${g.id}">
+            const isFrozen = !!g.isFrozen;
+            return `<section class="card goal-card${isFrozen ? ' frozen' : ''}" data-id="${g.id}">
               <div class="goal-top">
                 <div class="goal-ring" id="ring-${g.id}"></div>
                 <div class="goal-info">
-                  <h3>${App.esc(g.name)}</h3>
+                  <h3>${App.esc(g.name)} ${isFrozen ? '<span class="pill plain">🔒 Frozen</span>' : ''}</h3>
                   <div class="goal-nums">${S.fmt$(g.saved, 0)} <span class="muted">of</span> ${S.fmt$(g.target, 0)}</div>
-                  <div class="goal-sub">${S.fmt$(g.monthly, 0)}/mo ·
-                    ${m.remaining === 0 ? '<b class="pos">done 🎉</b>'
-                      : m.months != null ? m.months + ' mo → ' + S.fmtDate(m.projected)
-                      : 'no monthly contribution set'}</div>
+                  <div class="goal-sub">${isFrozen ? 'Paused — not counted in active goals'
+                    : S.fmt$(g.monthly, 0) + '/mo · ' +
+                      (m.remaining === 0 ? '<b class="pos">done 🎉</b>'
+                        : m.months != null ? m.months + ' mo → ' + S.fmtDate(m.projected)
+                        : 'no monthly contribution set')}</div>
                 </div>
               </div>
               <div class="btn-row">
-                <button class="btn slim" data-act="fund" data-id="${g.id}">＋ Add money</button>
-                <button class="btn slim ghost" data-act="edit" data-id="${g.id}">Edit</button>
+                ${isFrozen ? `
+                  <button class="btn slim unlock-hold" data-unlock="${g.id}" aria-label="Hold to unlock ${App.esc(g.name)}">
+                    <span class="unlock-fill"></span><span class="unlock-label">🔒 Hold to unlock</span>
+                  </button>` : `
+                  <button class="btn slim" data-act="fund" data-id="${g.id}">＋ Add money</button>
+                  <button class="btn slim ghost" data-act="edit" data-id="${g.id}">Edit</button>
+                  <button class="btn slim ghost" data-act="freeze" data-id="${g.id}">🧊 Freeze</button>`}
               </div>
             </section>`;
           }).join('')}
@@ -57,8 +69,33 @@
     root.querySelectorAll('[data-act]').forEach(btn => btn.addEventListener('click', () => {
       const g = goals.find(x => x.id === btn.dataset.id);
       if (!g) return;
-      if (btn.dataset.act === 'edit') editModal(g); else fundModal(g);
+      if (btn.dataset.act === 'edit') editModal(g);
+      else if (btn.dataset.act === 'freeze') {
+        g.isFrozen = true;
+        Store.save(); App.render(); App.toast(g.name + ' frozen — paused from active goals');
+      } else fundModal(g);
     }));
+
+    root.querySelectorAll('[data-unlock]').forEach(btn => {
+      let timer = null;
+      const start = () => {
+        if (timer) return;
+        btn.classList.add('holding');
+        timer = setTimeout(() => {
+          const g = goals.find(x => x.id === btn.dataset.unlock);
+          timer = null;
+          if (!g) return;
+          g.isFrozen = false;
+          Store.save(); App.render(); App.toast('Unlocked — ' + g.name + ' is active again');
+          fundModal(g);
+        }, HOLD_MS);
+      };
+      const cancel = () => { clearTimeout(timer); timer = null; btn.classList.remove('holding'); };
+      btn.addEventListener('pointerdown', start);
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, cancel));
+      btn.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); start(); } });
+      btn.addEventListener('keyup', e => { if (e.key === 'Enter' || e.key === ' ') cancel(); });
+    });
   };
 
   const stat = (label, value, tone) =>

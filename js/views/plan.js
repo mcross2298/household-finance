@@ -28,6 +28,13 @@
       const last = series[series.length - 1];
       return S.fmt$(last.net, 0) + ' · ' + S.fmtMonth(last.ym);
     };
+    const debtLine = () => {
+      const owed = S.data.accounts.filter(a => a.kind === 'debt' && (S.latestBalance(a.id) || 0) > 0);
+      if (!owed.length) return 'All paid off 🎉';
+      const conservative = S.debtStrategiesSummary()[0];
+      return owed.length + ' debt' + (owed.length > 1 ? 's' : '') +
+        (conservative.months != null ? ' · ' + conservative.months + ' mo at current payments' : '');
+    };
     const fcLine = () => {
       if (!Object.keys(S.data.snapshots).length) return 'Needs a balance snapshot';
       const fc = S.forecast(12);
@@ -67,6 +74,7 @@
             rothLine ? 'Roth: ' + rothLine : 'Add a member to track Roth',
             'HYSA deposit ' + S.fmt$(S.data.invest.hysa.deposit, 0) + '/mo')}
           ${tile('#/networth', Icons.bank, 'Net Worth', nwLine(), 'Accounts, snapshots & debt payoff')}
+          ${tile('#/debt', Icons.debt, 'Debt Payoff Plan', debtLine(), 'Conservative / Base / Aggressive strategies')}
           ${tile('#/forecast', Icons.trend, 'Forecast', fcLine(), '12-month cash-flow projection')}
           ${tile('#/wedding', Icons.sparkle, 'Wedding Payoff',
             wedding > 0 ? S.fmt$(wedding, 0) + ' remaining' : 'All settled 🎉',
