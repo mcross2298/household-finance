@@ -76,13 +76,19 @@
             <button class="btn ghost slim" id="m-add">＋ Add member</button></div>
           <div class="member-list">
             ${S.members().map((n, i) => `
-              <div class="member-row" data-idx="${i}">
-                <input class="input member-name" data-idx="${i}" value="${App.esc(n)}" aria-label="Member name">
-                <label class="member-inc"><span>$</span><input class="input" type="number" min="0" step="1" data-inc-idx="${i}" value="${+S.data.incomes[n] || 0}" aria-label="${App.esc(n)} monthly take-home"></label>
-                <button class="btn danger ghost slim" data-remove-idx="${i}"${S.members().length <= 1 ? ' disabled' : ''} title="Remove ${App.esc(n)}" aria-label="Remove ${App.esc(n)}">✕</button>
+              <div class="member-block">
+                <div class="member-row" data-idx="${i}">
+                  <input class="input member-name" data-idx="${i}" value="${App.esc(n)}" aria-label="Member name">
+                  <label class="member-inc"><span>$</span><input class="input" type="number" min="0" step="1" data-inc-idx="${i}" value="${+S.data.incomes[n] || 0}" aria-label="${App.esc(n)} monthly take-home"></label>
+                  <button class="btn danger ghost slim" data-remove-idx="${i}"${S.members().length <= 1 ? ' disabled' : ''} title="Remove ${App.esc(n)}" aria-label="Remove ${App.esc(n)}">✕</button>
+                </div>
+                <div class="form-grid member-paycycle">
+                  ${payCycleFields(n, i)}
+                </div>
               </div>`).join('')}
           </div>
-          <p class="help">Combined take-home ${S.fmt$(income, 0)}/mo → surplus after budget <b class="${S.surplus() < 0 ? 'neg' : 'pos'}">${S.fmt$(S.surplus(), 0)}</b> (${S.fmtPct(S.savingsRate())} savings rate). Each member's monthly take-home feeds the surplus, forecast, and per-person split.</p>
+          <p class="help">Combined take-home ${S.fmt$(income, 0)}/mo → surplus after budget <b class="${S.surplus() < 0 ? 'neg' : 'pos'}">${S.fmt$(S.surplus(), 0)}</b> (${S.fmtPct(S.savingsRate())} savings rate). Each member's monthly take-home feeds the surplus, forecast, and per-person split.
+             Set a pay cycle too and the Calendar will show which paycheck covers which bill — optional.</p>
         </section>
 
         <section class="card">
@@ -101,6 +107,22 @@
         if (n == null) return;
         S.data.incomes[n] = Math.max(0, parseFloat(e.target.value) || 0);
         S.save(); App.render();
+      }));
+    root.querySelectorAll('select[data-pc-freq-idx]').forEach(sel =>
+      sel.addEventListener('change', e => {
+        const n = S.members()[+sel.dataset.pcFreqIdx];
+        if (n == null) return;
+        S.data.payCycles[n] = S.data.payCycles[n] || { frequency: 'biweekly', anchor: null };
+        S.data.payCycles[n].frequency = e.target.value;
+        S.save();
+      }));
+    root.querySelectorAll('input[data-pc-anchor-idx]').forEach(inp =>
+      inp.addEventListener('change', e => {
+        const n = S.members()[+inp.dataset.pcAnchorIdx];
+        if (n == null) return;
+        S.data.payCycles[n] = S.data.payCycles[n] || { frequency: 'biweekly', anchor: null };
+        S.data.payCycles[n].anchor = e.target.value || null;
+        S.save(); App.render({ resetScroll: false });
       }));
     root.querySelectorAll('input.member-name').forEach(inp =>
       inp.addEventListener('change', e => {
@@ -142,6 +164,21 @@
 
   const stat = (label, value) =>
     `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
+
+  const PAY_FREQUENCY_LABELS = { weekly: 'Weekly', biweekly: 'Biweekly', semimonthly: 'Semi-monthly', monthly: 'Monthly' };
+  function payCycleFields(name, idx) {
+    const pc = (Store.data.payCycles && Store.data.payCycles[name]) || { frequency: 'biweekly', anchor: null };
+    return `
+      <label>Pay cycle
+        <select class="select" data-pc-freq-idx="${idx}">
+          ${Object.keys(PAY_FREQUENCY_LABELS).map(f =>
+            `<option value="${f}"${pc.frequency === f ? ' selected' : ''}>${PAY_FREQUENCY_LABELS[f]}</option>`).join('')}
+        </select>
+      </label>
+      <label>Last (or next) payday
+        <input class="input" type="date" data-pc-anchor-idx="${idx}" value="${pc.anchor || ''}">
+      </label>`;
+  }
 
   function addMemberModal() {
     const m = App.modal('Add household member', `
