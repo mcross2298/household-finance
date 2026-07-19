@@ -1,5 +1,3 @@
-$ cat /home/user/Cross-Household-/CLAUDE.md
-
 # Household Finance — guidance for Claude Code
 
 This is a **vanilla HTML/CSS/JS Progressive Web App** — no framework, no build
@@ -38,10 +36,41 @@ which before doing anything else:
   first; almost everything else just calls into it.
 - `js/views/*.js` — one file per screen (`budget.js`, `dashboard.js`, etc.),
   each exporting `Views.<name>(root)` that renders into the router's outlet.
+- `js/features.js` — a single registry (`window.Features`) of every
+  user-facing screen: `{ id, route, icon, title, blurb }`. It's the shared
+  source of truth behind both onboarding surfaces below — see "Executive
+  Summary & Quick Tour" for why this file matters more than its size suggests.
+- `js/views/summary.js` (`Views.summary`, route `#/summary`) — the Executive
+  Summary: a one-page financial snapshot (net worth, this month vs. budget,
+  goals, insights, debt, wedding) plus an "app features" grid rendered from
+  `Features`.
+- `js/tour.js` (`window.Tour`) — Quick Tour: a step-by-step modal walkthrough
+  over `Features`, auto-launched once on first-ever open (localStorage flag,
+  not `Store` data) and re-launchable any time from the Executive Summary's
+  "Take the Quick Tour" button.
 - `js/app.js` — hash-based router, modals, toasts, global search.
 - `js/charts.js` — dependency-free inline-SVG charts (bars, donut, trend,
   rings). No charting library.
 - `sw.js` / `manifest.json` — PWA offline shell + install metadata.
+
+## Executive Summary & Quick Tour
+
+These two screens are how a person orients themselves in the app — one on
+first open (Quick Tour), one any time after (Executive Summary, `#/summary`).
+Both render their "what can this app do" content from the single `Features`
+array in `js/features.js` instead of hardcoding a screen list twice.
+
+**Whenever you add or meaningfully change a UI/UX-visible feature — a new
+screen, a new nav entry, a renamed/repurposed screen — update
+`js/features.js` first.** A new entry there automatically appears in both the
+Quick Tour and the Executive Summary's feature grid; that's the whole point of
+the registry, so a screen doesn't quietly drift out of sync with the two
+places new users learn about it. If a change doesn't fit the registry pattern
+— e.g. a workflow change *inside* an existing screen that alters what its
+`blurb` promises, or a shift in the Executive Summary's financial-snapshot
+section itself — update the relevant text by hand in `summary.js` and/or the
+`blurb` in `features.js` so neither surface goes stale. Don't ship a
+UI/UX-visible change without checking whether either surface needs a touch.
 
 ## The data model
 
