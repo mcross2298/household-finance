@@ -51,10 +51,36 @@
           <div class="btn-row">
             <button class="btn gold" id="wi-apply"${trial === +goal.monthly ? ' disabled' : ''}>Apply ${S.fmt$(trial, 0)}/mo</button>
             <button class="btn ghost" id="wi-reset"${trial === +goal.monthly ? ' disabled' : ''}>Reset</button>
+            <button class="btn ghost" id="wi-save-scenario">💾 Save as scenario</button>
           </div>
-          <p class="help">Nothing changes until you tap Apply — slide freely.</p>
+          <p class="help">Nothing changes until you tap Apply — slide freely. Saving a scenario doesn't apply it either;
+             it's a named bookmark of this goal + trial figure you can reload later.</p>
         </section>`;
     }
+
+    const scenarios = S.data.forecastScenarios;
+    const scenariosBlock = scenarios.length ? `
+      <section class="card">
+        <div class="card-head"><h2>Saved scenarios</h2><span class="card-note">recomputed live — never frozen</span></div>
+        <ul class="acct-list">
+          ${scenarios.map(sc => {
+            const g = S.data.goals.find(x => x.id === sc.goalId);
+            if (!g) return '';
+            const trialGoal = Object.assign({}, g, { monthly: sc.monthly });
+            const meta = S.goalMeta(trialGoal);
+            return `<li class="acct-row">
+              <div class="acct-main">
+                <span class="acct-name">${App.esc(sc.name)}</span>
+                <span class="acct-meta">${App.esc(g.name)} · ${S.fmt$(sc.monthly, 0)}/mo · ${meta.projected ? S.fmtDate(meta.projected) : (meta.remaining === 0 ? 'funded' : 'never at this rate')}</span>
+              </div>
+              <div class="btn-row" style="margin:0">
+                <button class="btn ghost sm" data-load-scenario="${sc.id}">Load</button>
+                <button class="btn danger ghost sm" data-del-scenario="${sc.id}">✕</button>
+              </div>
+            </li>`;
+          }).join('')}
+        </ul>
+      </section>` : '';
 
     root.innerHTML = `
       <div class="page">
@@ -94,6 +120,7 @@
         </section>
 
         ${whatIfBlock}
+        ${scenariosBlock}
       </div>`;
 
     Charts.line(root.querySelector('#fc-chart'),
@@ -131,10 +158,43 @@
     if (wiReset) wiReset.addEventListener('click', () => {
       whatIfMonthly = null; App.render({ resetScroll: false });
     });
+    const wiSaveScenario = root.querySelector('#wi-save-scenario');
+    if (wiSaveScenario) wiSaveScenario.addEventListener('click', () => saveScenarioModal(goal, trial));
+    root.querySelectorAll('[data-load-scenario]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const sc = S.data.forecastScenarios.find(x => x.id === btn.dataset.loadScenario);
+        if (!sc) return;
+        whatIfGoal = sc.goalId; whatIfMonthly = sc.monthly;
+        App.render();
+        App.toast('Loaded “' + sc.name + '”');
+      }));
+    root.querySelectorAll('[data-del-scenario]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        App.confirmDialog('Delete scenario', 'Remove this saved scenario? The goal itself is unaffected.', 'Delete', () => {
+          S.deleteForecastScenario(btn.dataset.delScenario);
+          App.render({ resetScroll: false });
+          App.toast('Deleted');
+        });
+      }));
   };
 
   const stat = (label, value) =>
     `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
+
+  function saveScenarioModal(goal, trial) {
+    const m = App.modal('Save scenario', `
+      <p class="help">Bookmarks “${App.esc(goal.name)}” at ${Store.fmt$(trial, 0)}/mo — give it a name to compare later.</p>
+      <label>Name<input class="input" id="sc-name" placeholder="e.g. House 2027" autofocus></label>
+      <div class="btn-row"><button class="btn gold" id="sc-save">Save</button></div>`);
+    const input = m.el.querySelector('#sc-name');
+    m.el.querySelector('#sc-save').addEventListener('click', () => {
+      const name = input.value.trim();
+      if (!name) return App.toast('Name the scenario', 'warn');
+      Store.saveForecastScenario(name, goal.id, trial);
+      m.close(); App.render({ resetScroll: false });
+      App.toast('Scenario saved');
+    });
+  }
 
   function plannedModal(p) {
     const isNew = !p;

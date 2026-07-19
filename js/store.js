@@ -81,7 +81,7 @@
     };
 
     return {
-      version: 6,
+      version: 7,
       lastUpdated: new Date().toISOString(),
       needsExport: false,
       rules: [],
@@ -93,6 +93,7 @@
       planned: [],
       rolloverBalances: {},
       subReviewed: {},
+      forecastScenarios: [],
       members: ['Alex', 'Sam'],
       incomes: { Alex: 4200, Sam: 3800 },
       budget: [
@@ -145,7 +146,8 @@
       invest: {
         rothLimit: 7500, rothYear: year,
         roth: { Alex: 1500, Sam: 1200 },
-        hysa: { balance: 6000, deposit: 400, apys: [3.0, 3.8, 4.5] }
+        hysa: { balance: 6000, deposit: 400, apys: [3.0, 3.8, 4.5] },
+        payFrequency: 'biweekly'
       },
       wedding: {
         date: addMonths(4),
@@ -170,7 +172,7 @@
      so a backup from any version restores cleanly. */
   function migrate() {
     const v = +data.version || 1;
-    if (v >= 6) return;
+    if (v >= 7) return;
     if (v < 2) {
       data.rules = data.rules || [];
       data.importBatches = data.importBatches || [];
@@ -201,7 +203,11 @@
       data.rolloverBalances = data.rolloverBalances || {};
       data.subReviewed = data.subReviewed || {};
     }
-    data.version = 6;
+    if (v < 7) {
+      data.forecastScenarios = data.forecastScenarios || [];
+      if (data.invest) data.invest.payFrequency = data.invest.payFrequency || 'biweekly';
+    }
+    data.version = 7;
     save();
   }
   function save() {
@@ -218,11 +224,11 @@
   function emptyState() {
     const now = new Date();
     return {
-      version: 6, lastUpdated: now.toISOString(), needsExport: false,
+      version: 7, lastUpdated: now.toISOString(), needsExport: false,
       rules: [], importBatches: [], closes: {},
       reminders: { enabled: false, daysAhead: 3, log: {} },
       accounts: [], snapshots: {}, planned: [],
-      rolloverBalances: {}, subReviewed: {},
+      rolloverBalances: {}, subReviewed: {}, forecastScenarios: [],
       members: ['You'], incomes: { You: 0 },
       budget: [], transactions: [], goals: [],
       house: {
@@ -230,7 +236,7 @@
         rate: 6.5, termYears: 30, taxRate: 1.6, insuranceYr: 1200,
         pmiRate: 0.75, closingPct: 4, scenarios: []
       },
-      invest: { rothLimit: 7500, rothYear: now.getFullYear(), roth: { You: 0 }, hysa: { balance: 0, deposit: 0, apys: [3.0, 3.8, 4.5] } },
+      invest: { rothLimit: 7500, rothYear: now.getFullYear(), roth: { You: 0 }, hysa: { balance: 0, deposit: 0, apys: [3.0, 3.8, 4.5] }, payFrequency: 'biweekly' },
       wedding: { date: '', vendors: [] }
     };
   }
@@ -397,6 +403,23 @@
       projected = d.toISOString().slice(0, 10);
     }
     return { remaining, pct, months, projected };
+  }
+
+  /* Named, saved what-if trials for the Forecast screen's goal-contribution
+     slider — just a goal id + a trial monthly figure, always recomputed live
+     against current goal/forecast data rather than frozen at save time, so
+     "House 2027" vs "House 2028" stays honest as everything else changes. */
+  function saveForecastScenario(name, goalId, monthly) {
+    name = String(name || '').trim();
+    if (!name || !goalId) return null;
+    const s = { id: uid(), name, goalId, monthly: +monthly || 0, createdAt: new Date().toISOString() };
+    data.forecastScenarios.push(s);
+    save();
+    return s;
+  }
+  function deleteForecastScenario(id) {
+    data.forecastScenarios = data.forecastScenarios.filter(s => s.id !== id);
+    save();
   }
 
   function houseScenario(s) {
@@ -738,6 +761,7 @@
     }).sort((a, b) => (+b.amount || 0) - (+a.amount || 0));
   }
 
+  const PAY_FREQUENCIES = { weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12 };
   function rothMeta(person) {
     const inv = data.invest;
     const limit = +inv.rothLimit || 0;
@@ -746,7 +770,10 @@
     const now = new Date();
     const monthsLeft = now.getFullYear() <= inv.rothYear
       ? Math.max(1, 12 - now.getMonth()) : 1;
-    return { limit, ytd, remaining, monthlyToMax: remaining / monthsLeft, monthsLeft };
+    const monthlyToMax = remaining / monthsLeft;
+    const payFrequency = inv.payFrequency || 'biweekly';
+    const perPaycheckToMax = monthlyToMax * 12 / (PAY_FREQUENCIES[payFrequency] || 26);
+    return { limit, ytd, remaining, monthlyToMax, monthsLeft, perPaycheckToMax, payFrequency };
   }
   function hysaProjection(apyPct, months) {
     const { balance, deposit } = data.invest.hysa;
@@ -1121,12 +1148,12 @@
 
   /* Amortized payoff at a fixed monthly payment: months to zero, payoff date,
      total interest. extra rides on top of the regular payment. */
-  function debtPayoff(account, extra) {
+  function debtPayoff(account, extra, rateOverride) {
     const B = latestBalance(account.id);
     const P = (+account.payment || 0) + (+extra || 0);
     if (B == null || B <= 0) return { months: 0, date: null, interest: 0, balance: B };
     if (P <= 0) return { months: null, date: null, interest: null, balance: B };
-    const i = (+account.rate || 0) / 100 / 12;
+    const i = (rateOverride != null ? +rateOverride : (+account.rate || 0)) / 100 / 12;
     let months, interest;
     if (i === 0) {
       months = Math.ceil(B / P);
@@ -1195,6 +1222,51 @@
     return { snowball, avalanche };
   }
 
+  /* Rolling payoff simulation for an ordered list of debts: each debt keeps
+     its own minimum payment, but the current target (first unpaid, in the
+     given order) also gets `extra` plus every payment freed up by a debt
+     that's already hit zero — the actual snowball/avalanche mechanic, not
+     just independent per-debt math. Capped at 50 years as a safety valve for
+     a payment that can't realistically clear the balance. */
+  function debtRollupPlan(orderedDebts, extra) {
+    const items = orderedDebts
+      .map(a => ({ name: a.name, balance: latestBalance(a.id) || 0, rate: (+a.rate || 0) / 100 / 12, payment: +a.payment || 0 }))
+      .filter(x => x.balance > 0);
+    if (!items.length) return { months: 0, interest: 0, date: null, order: [] };
+    let months = 0, interest = 0, freed = 0;
+    const order = [];
+    const MAX_MONTHS = 600;
+    while (items.some(x => x.balance > 0) && months < MAX_MONTHS) {
+      months++;
+      for (const it of items) {
+        if (it.balance <= 0) continue;
+        const monthInterest = it.balance * it.rate;
+        interest += monthInterest;
+        it.balance += monthInterest;
+      }
+      const target = items.find(x => x.balance > 0);
+      for (const it of items) {
+        if (it.balance <= 0) continue;
+        const pay = Math.min(it === target ? it.payment + extra + freed : it.payment, it.balance);
+        it.balance -= pay;
+        if (it.balance <= 0.005) { it.balance = 0; freed += it.payment; order.push({ name: it.name, month: months }); }
+      }
+    }
+    const d = new Date(); d.setMonth(d.getMonth() + months);
+    return { months, interest, date: d.toISOString().slice(0, 10), order };
+  }
+  /* Side-by-side snowball vs. avalanche, with a shared extra-payment pool so
+     the comparison is apples-to-apples: same total dollars, different order. */
+  function debtPayoffOrderComparison(extra) {
+    const debts = data.accounts.filter(a => a.kind === 'debt' && (latestBalance(a.id) || 0) > 0);
+    if (debts.length < 2) return null;
+    const order = debtPayoffOrder();
+    return {
+      snowball: debtRollupPlan(order.snowball, +extra || 0),
+      avalanche: debtRollupPlan(order.avalanche, +extra || 0)
+    };
+  }
+
   /* 12-month liquid-cash projection. Start = latest Checking+Savings balances.
      Each month: + take-home income − recurring budget − Roth contributions
      (money that leaves liquid for investment) − wedding payments due − planned
@@ -1259,6 +1331,7 @@
     txInMonth, spendByCategory, spendByWho, monthsWithData,
     goalMeta, houseScenario, weddingRemaining, rothMeta, hysaProjection,
     goalsProgress, insights,
+    saveForecastScenario, deleteForecastScenario,
     parseCSV, exportCSV, csvEscape,
     monthPace, safeToSpend, avgSpendByCategory, categoryTrends, priceCreeps, unusualTx,
     subscriptionNudges, markSubscriptionReviewed,
@@ -1266,7 +1339,7 @@
     dueForReminder, markReminded,
     closeChecklist, monthSummary, closeMonth,
     balanceAt, latestBalance, netWorthSeries, saveSnapshot, debtPayoff, forecast,
-    debtStrategies, debtStrategiesSummary, debtPayoffOrder,
+    debtStrategies, debtStrategiesSummary, debtPayoffOrder, debtRollupPlan, debtPayoffOrderComparison,
     normalizeMerchant, merchantKey, prettyMerchant,
     ruleFor, suggestRule, learnRule, likelyDuplicate,
     matchBudgetLine, budgetLineStatus,

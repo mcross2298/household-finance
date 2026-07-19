@@ -19,7 +19,8 @@
           <div class="goal-info">
             <div class="goal-nums">${S.fmt$(m.ytd, 0)} <span class="muted">of</span> ${S.fmt$(m.limit, 0)}</div>
             <div class="goal-sub">${inv.rothYear} limit · deadline Apr 15, ${inv.rothYear + 1}</div>
-            ${m.remaining > 0 ? `<div class="goal-sub"><b>${S.fmt$(m.monthlyToMax, 0)}/mo</b> maxes it by December (${m.monthsLeft} month${m.monthsLeft === 1 ? '' : 's'} left)</div>` : ''}
+            ${m.remaining > 0 ? `<div class="goal-sub"><b>${S.fmt$(m.monthlyToMax, 0)}/mo</b> maxes it by December (${m.monthsLeft} month${m.monthsLeft === 1 ? '' : 's'} left) —
+              ~${S.fmt$(m.perPaycheckToMax, 0)} per paycheck</div>` : ''}
           </div>
         </div>
         <div class="form-grid">
@@ -29,7 +30,17 @@
 
     root.innerHTML = `
       <div class="page">
-        <div class="page-head"><h1>Investments</h1></div>
+        <div class="page-head">
+          <h1>Investments</h1>
+          <label style="display:flex;flex-direction:row;align-items:center;gap:8px">Pay frequency
+            <select class="select slim" id="pay-freq">
+              <option value="weekly"${inv.payFrequency === 'weekly' ? ' selected' : ''}>Weekly</option>
+              <option value="biweekly"${inv.payFrequency === 'biweekly' ? ' selected' : ''}>Biweekly</option>
+              <option value="semimonthly"${inv.payFrequency === 'semimonthly' ? ' selected' : ''}>Semi-monthly</option>
+              <option value="monthly"${inv.payFrequency === 'monthly' ? ' selected' : ''}>Monthly</option>
+            </select>
+          </label>
+        </div>
         <div class="${roster.length === 1 ? '' : 'two-col'}">
           ${rothMetas.length ? rothMetas.map((r, i) => rothCard(r.name, i, r.meta)).join('')
             : '<section class="card"><p class="empty">Add a household member on the Budget screen to track Roth contributions.</p></section>'}
@@ -78,5 +89,9 @@
       const v = parseFloat(inp.value);
       if (!isNaN(v) && v >= 0) { inv.hysa.apys[+inp.dataset.apy] = v; Store.save(); App.render(); }
     }));
+    root.querySelector('#pay-freq').addEventListener('change', e => {
+      inv.payFrequency = e.target.value;
+      Store.save(); App.render();
+    });
   };
 })();

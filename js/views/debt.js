@@ -1,8 +1,11 @@
 /* Debt Payoff Plan — Conservative/Base/Aggressive strategies side by side,
-   per debt and household-wide, plus a snowball/avalanche order hint. */
+   per debt and household-wide, plus a snowball/avalanche order hint and a
+   rolling payoff simulation comparing the two head-to-head. */
 (function () {
   'use strict';
   window.Views = window.Views || {};
+
+  let rollupExtra = 0; // shared extra $/mo tried across the snowball/avalanche comparison
 
   Views.debt = function (root) {
     const S = Store;
@@ -10,6 +13,7 @@
     const owed = debts.filter(a => (S.latestBalance(a.id) || 0) > 0);
     const summary = S.debtStrategiesSummary();
     const order = S.debtPayoffOrder();
+    const comparison = S.debtPayoffOrderComparison(rollupExtra);
     const totalBalance = owed.reduce((s, a) => s + (S.latestBalance(a.id) || 0), 0);
     const totalMin = owed.reduce((s, a) => s + (+a.payment || 0), 0);
 
@@ -63,13 +67,46 @@
             </div>
           </div>
           <p class="help">Once a debt is paid off, roll its full payment into the next one on your chosen list — that's the "snowball"/"avalanche" effect. This app doesn't auto-roll payments; revisit this page as balances change.</p>
+        </section>
+        <section class="card">
+          <div class="card-head"><h2>Snowball vs. avalanche, head to head</h2>
+            <span class="card-note">rolling payments simulated — not just independent per-debt math</span></div>
+          <label class="payoff-slider">Extra <b>${S.fmt$(rollupExtra, 0)}</b>/mo, on top of every minimum
+            <input type="range" min="0" max="500" step="25" value="${rollupExtra}" id="rollup-extra">
+          </label>
+          ${comparison ? `
+          <div class="two-col" style="margin-top:12px">
+            ${rollupCard('Snowball', comparison.snowball, comparison.avalanche)}
+            ${rollupCard('Avalanche', comparison.avalanche, comparison.snowball)}
+          </div>` : ''}
+          <p class="help">Same total dollars, different order — this is what actually changes once a debt hits zero and its payment rolls into the next one.</p>
         </section>` : ''}
         `}
       </div>`;
+
+    const rollupSlider = root.querySelector('#rollup-extra');
+    if (rollupSlider) rollupSlider.addEventListener('change', () => {
+      rollupExtra = +rollupSlider.value;
+      App.render({ resetScroll: false });
+    });
   };
 
   const stat = (label, value) =>
     `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
+
+  function rollupCard(label, plan, other) {
+    const S = Store;
+    const monthsDelta = other.months - plan.months;
+    const interestDelta = other.interest - plan.interest;
+    return `<section class="card sc-card">
+      <div class="card-head"><h2>${label}</h2></div>
+      <div class="sc-piti">${plan.months} mo<span>to debt-free</span></div>
+      ${row('Finish date', S.fmtDate(plan.date), 'strong')}
+      ${row('Total interest', S.fmt$(plan.interest, 0))}
+      ${row('vs. the other order', (monthsDelta === 0 ? 'same finish' : monthsDelta > 0 ? monthsDelta + ' mo sooner' : Math.abs(monthsDelta) + ' mo slower')
+        + (interestDelta !== 0 ? ' · ' + (interestDelta > 0 ? 'saves ' : 'costs ') + S.fmt$(Math.abs(interestDelta), 0) : ''))}
+    </section>`;
+  }
 
   function strategyCard(s) {
     const S = Store;

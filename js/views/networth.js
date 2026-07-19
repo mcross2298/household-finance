@@ -5,6 +5,7 @@
   window.Views = window.Views || {};
 
   let extraPay = {}; // accountId -> extra monthly payment being tried (not saved)
+  let refiRate = {};  // accountId -> trial APR being tried (not saved) — a refinance what-if
 
   Views.networth = function (root) {
     const S = Store;
@@ -28,20 +29,27 @@
 
     const payoffCard = a => {
       const extra = +extraPay[a.id] || 0;
+      const rate = refiRate[a.id] != null ? +refiRate[a.id] : (+a.rate || 0);
       const now = S.debtPayoff(a, 0);
-      const w = S.debtPayoff(a, extra);
+      const w = S.debtPayoff(a, extra, rate);
       if (now.balance == null) return '';
       if (now.balance <= 0) return `<div class="payoff"><b>${App.esc(a.name)}</b><span class="pill good">paid off 🎉</span></div>`;
       const line = now.months == null
         ? '<span class="neg">payment doesn\'t cover interest — check rate/payment</span>'
         : `${now.months} mo → <b>${S.fmtDate(now.date)}</b>${a.rate ? ' · ' + S.fmt$(now.interest, 0) + ' interest left' : ''}`;
-      const whatIf = extra > 0 && w.months != null && now.months != null
-        ? `<div class="payoff-whatif">+${S.fmt$(extra, 0)}/mo → ${w.months} mo (<b class="pos">${now.months - w.months} sooner</b>${a.rate ? ', saves ' + S.fmt$(now.interest - w.interest, 0) : ''})</div>` : '';
+      const rateChanged = Math.abs(rate - (+a.rate || 0)) >= 0.01;
+      const changed = extra > 0 || rateChanged;
+      const whatIfLabel = [extra > 0 ? '+' + S.fmt$(extra, 0) + '/mo' : '', rateChanged ? 'refi to ' + rate + '%' : ''].filter(Boolean).join(' · ');
+      const whatIf = changed && w.months != null && now.months != null
+        ? `<div class="payoff-whatif">${whatIfLabel} → ${w.months} mo (<b class="pos">${now.months - w.months} sooner</b>, saves ${S.fmt$(now.interest - w.interest, 0)})</div>` : '';
       return `<div class="payoff">
         <div class="payoff-head"><b>${App.esc(a.name)}</b><span>${S.fmt$(now.balance, 0)}</span></div>
         <div class="payoff-line">${line}</div>
         <label class="payoff-slider">Extra <b>${S.fmt$(extra, 0)}</b>/mo
           <input type="range" min="0" max="500" step="25" value="${extra}" data-extra="${a.id}">
+        </label>
+        <label class="payoff-slider">Refi rate <b>${rate}%</b> <span class="muted">(now ${a.rate}%)</span>
+          <input type="range" min="0" max="15" step="0.25" value="${rate}" data-refi="${a.id}">
         </label>
         ${whatIf}
       </div>`;
@@ -108,6 +116,12 @@
     root.querySelectorAll('[data-extra]').forEach(sl => {
       sl.addEventListener('change', () => {
         extraPay[sl.dataset.extra] = +sl.value;
+        App.render({ resetScroll: false });
+      });
+    });
+    root.querySelectorAll('[data-refi]').forEach(sl => {
+      sl.addEventListener('change', () => {
+        refiRate[sl.dataset.refi] = +sl.value;
         App.render({ resetScroll: false });
       });
     });
