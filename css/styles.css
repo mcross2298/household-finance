@@ -601,6 +601,14 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 }
 .learn-toggle input { width: 18px; height: 18px; accent-color: var(--gold); flex-shrink: 0; }
 
+/* ---------- quick-add merchant chips ---------- */
+.qf-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.qf-chip {
+  background: var(--blue-card); color: var(--navy); border: none; border-radius: 20px;
+  padding: 7px 14px; font-size: .82rem; font-weight: 600; cursor: pointer;
+}
+.qf-chip:hover, .qf-chip:focus-visible { background: var(--gold); color: var(--navy-deep); }
+
 .batch-list, .rules-list { list-style: none; }
 .batch-row {
   display: flex; justify-content: space-between; align-items: center; gap: 10px;
@@ -622,6 +630,18 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 @media (min-width: 700px) {
   .rule-match { flex: 1 1 auto; }
   .rule-row .select.slim { flex: 0 1 170px; }
+}
+
+/* ---------- dashboard customize / streak badges ---------- */
+.layout-list { list-style: none; }
+.layout-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 10px 4px; border-bottom: 1px solid var(--line);
+}
+.layout-row:last-child { border-bottom: 0; }
+.streak-badge {
+  font-size: .72rem; font-weight: 700; color: var(--gold-ink);
+  background: var(--warn-bg); padding: 2px 8px; border-radius: 20px; margin-left: 6px;
 }
 
 /* ---------- budget line status (posted / month-to-date) ---------- */
@@ -728,6 +748,19 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   color: var(--gold-ink); background: var(--dup-bg); border-radius: 8px; padding: 1px 7px; margin-left: 4px;
 }
 .pill.plain { background: var(--track); color: var(--ink-3); }
+
+/* ---------- spending heatmap ---------- */
+.heatmap-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.heatmap-dow { text-align: center; font-size: .68rem; font-weight: 700; color: var(--ink-3); padding-bottom: 4px; }
+.heatmap-cell {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; background: rgba(255, 192, 0, var(--intensity, 0));
+  border: 1px solid var(--line); text-decoration: none; color: var(--ink);
+  font-size: .78rem; font-variant-numeric: tabular-nums;
+}
+.heatmap-cell:hover, .heatmap-cell:focus-visible { border-color: var(--gold-ink); }
+.heatmap-cell.empty { border: none; background: transparent; }
+.heatmap-cell.today { box-shadow: inset 0 0 0 2px var(--navy); font-weight: 800; }
 
 .close-step { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); }
 .close-step-mark {
