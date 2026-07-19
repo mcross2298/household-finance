@@ -20,6 +20,15 @@
      current household — dropdowns, iteration, and CSV all read from it. */
   const SHARED = 'Shared';
   const TYPES = ['Fixed', 'Discretionary'];
+  /* Debt account types. 'Loan' is the legacy catch-all already in use by
+     seeded accounts; Mortgage/Auto Loan are extensibility stubs for debt
+     categories the household doesn't have yet. */
+  const DEBT_TYPES = ['Loan', 'Mortgage', 'Auto Loan', 'Credit Card', 'Other'];
+  const DEBT_STRATEGIES = [
+    { key: 'conservative', label: 'Conservative', multiplier: 1 },
+    { key: 'base', label: 'Base', multiplier: 1.5 },
+    { key: 'aggressive', label: 'Aggressive', multiplier: 2 }
+  ];
   const CSV_HEADER = ['Date', 'Category', 'Description', 'Amount', 'Who', 'Account', 'Notes'];
 
   const uid = () => (crypto.randomUUID ? crypto.randomUUID()
@@ -420,11 +429,16 @@
   }
 
   /* Total saved vs. total target across every savings goal (house, Roth, emergency, etc.) —
-     the single rollup number for "how are we doing overall". */
+     the single rollup number for "how are we doing overall". Frozen buckets keep their
+     saved balance in the total (it's real money) but drop out of target/monthly so a
+     frozen "someday" goal doesn't dilute the push toward what's active right now. */
   function goalsProgress() {
+    const active = data.goals.filter(g => !g.isFrozen);
     const saved = data.goals.reduce((s, g) => s + (+g.saved || 0), 0);
-    const target = data.goals.reduce((s, g) => s + (+g.target || 0), 0);
-    return { saved, target, pct: target > 0 ? Math.min(1, saved / target) : 0 };
+    const target = active.reduce((s, g) => s + (+g.target || 0), 0);
+    const monthly = active.reduce((s, g) => s + (+g.monthly || 0), 0);
+    const frozenMonthly = data.goals.filter(g => g.isFrozen).reduce((s, g) => s + (+g.monthly || 0), 0);
+    return { saved, target, monthly, frozenMonthly, pct: target > 0 ? Math.min(1, saved / target) : 0 };
   }
 
   /* Rules-based alerts surfaced on the Dashboard: budget overruns, goals outpacing
@@ -443,7 +457,7 @@
     if (budget > 0 && spentThisMonth > budget) {
       out.push({ tone: 'bad', text: `You're ${fmt$(spentThisMonth - budget, 0)} over budget for ${fmtMonth(month)}.`, href: `#/transactions?month=${month}` });
     }
-    const committed = data.goals.reduce((s, g) => s + (+g.monthly || 0), 0);
+    const committed = data.goals.filter(g => !g.isFrozen).reduce((s, g) => s + (+g.monthly || 0), 0);
     const after = surplusVal - committed;
     if (after < 0) {
       out.push({ tone: 'warn', text: `Goal contributions exceed your monthly surplus by ${fmt$(-after, 0)}.`, href: '#/goals' });
@@ -1006,6 +1020,57 @@
     return { months, date: d.toISOString().slice(0, 10), interest, balance: B };
   }
 
+  /* Conservative/Base/Aggressive payoff comparison for one debt: minimum payment,
+     1.5x, and 2x, each run through debtPayoff so the math stays identical to the
+     Net Worth what-if slider. */
+  function debtStrategies(account) {
+    const base = +account.payment || 0;
+    return DEBT_STRATEGIES.map(s => {
+      const payment = base * s.multiplier;
+      const extra = payment - base;
+      return Object.assign({ payment, extra }, s, debtPayoff(account, extra));
+    });
+  }
+
+  /* Household-wide rollup per strategy: total extra $/mo required across every
+     debt with a balance, the slowest debt's payoff month (debts run in parallel
+     at that strategy, not snowballed), total interest left, and whether the
+     extra fits inside the current monthly surplus. */
+  function debtStrategiesSummary() {
+    const debts = data.accounts.filter(a => a.kind === 'debt' && (latestBalance(a.id) || 0) > 0);
+    const room = Math.max(0, surplus());
+    return DEBT_STRATEGIES.map(s => {
+      let extraTotal = 0, interestTotal = 0, monthsMax = null, unknown = false;
+      debts.forEach(a => {
+        const strat = debtStrategies(a).find(x => x.key === s.key);
+        extraTotal += strat.extra;
+        if (strat.months == null) { unknown = true; return; }
+        monthsMax = monthsMax == null ? strat.months : Math.max(monthsMax, strat.months);
+        interestTotal += strat.interest || 0;
+      });
+      let date = null;
+      if (!unknown && monthsMax != null) {
+        const d = new Date(); d.setMonth(d.getMonth() + monthsMax);
+        date = d.toISOString().slice(0, 10);
+      }
+      return {
+        key: s.key, label: s.label, extraTotal,
+        months: unknown ? null : monthsMax, interest: unknown ? null : interestTotal, date,
+        affordable: extraTotal <= room
+      };
+    });
+  }
+
+  /* Non-optimizing payoff-order hints for households with 2+ debts: snowball
+     (smallest balance first, for momentum) and avalanche (highest rate first,
+     cheapest overall). A scannable list, not a scheduler. */
+  function debtPayoffOrder() {
+    const debts = data.accounts.filter(a => a.kind === 'debt' && (latestBalance(a.id) || 0) > 0);
+    const snowball = [...debts].sort((a, b) => (latestBalance(a.id) || 0) - (latestBalance(b.id) || 0));
+    const avalanche = [...debts].sort((a, b) => (+b.rate || 0) - (+a.rate || 0));
+    return { snowball, avalanche };
+  }
+
   /* 12-month liquid-cash projection. Start = latest Checking+Savings balances.
      Each month: + take-home income − recurring budget − Roth contributions
      (money that leaves liquid for investment) − wedding payments due − planned
@@ -1058,7 +1123,7 @@
   }
 
   window.Store = {
-    CATEGORIES, TYPES, CSV_HEADER, SHARED, uid,
+    CATEGORIES, TYPES, DEBT_TYPES, CSV_HEADER, SHARED, uid,
     get WHO() { return WHO(); },
     get data() { return data; },
     members, addMember, renameMember, removeMember,
@@ -1076,6 +1141,7 @@
     dueForReminder, markReminded,
     closeChecklist, monthSummary, closeMonth,
     balanceAt, latestBalance, netWorthSeries, saveSnapshot, debtPayoff, forecast,
+    debtStrategies, debtStrategiesSummary, debtPayoffOrder,
     normalizeMerchant, merchantKey, prettyMerchant,
     ruleFor, learnRule, likelyDuplicate,
     matchBudgetLine, budgetLineStatus,
