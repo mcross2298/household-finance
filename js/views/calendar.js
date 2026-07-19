@@ -21,8 +21,20 @@
     const lastCheck = S.closeChecklist(last);
     const showClose = S.txInMonth(last).length > 0;
 
+    const paychecks = S.paycheckAllocations(month);
+    const paydayMap = {};
+    for (const p of S.paydaysInMonthAll(month)) (paydayMap[p.date] = paydayMap[p.date] || []).push(p.person);
+    const fundedBy = {};
+    for (const b of S.data.budget) {
+      if (b.type === 'Fixed' && b.dueDay) {
+        const fp = S.fundingPaycheck(b, month);
+        if (fp) fundedBy[b.id] = fp;
+      }
+    }
+
     const byDay = {};
     for (const i of dated) (byDay[i.due] = byDay[i.due] || []).push(i);
+    const dayKeys = [...new Set([...Object.keys(byDay), ...Object.keys(paydayMap)])].sort();
 
     root.innerHTML = `
       <div class="page">
@@ -45,26 +57,43 @@
 
         <section class="card">
           <div class="card-head"><h2>${S.fmtMonth(month)} schedule</h2>
-            <span class="card-note">bills check off automatically when the transaction posts</span></div>
-          ${dated.length ? Object.keys(byDay).sort().map(day => `
+            <span class="card-note">bills check off automatically when the transaction posts · 💰 marks paydays</span></div>
+          ${dayKeys.length ? dayKeys.map(day => `
             <div class="cal-day">
               <div class="cal-day-chip${day === new Date().toISOString().slice(0, 10) ? ' today' : ''}">
                 <span class="cal-day-num">${+day.slice(8)}</span>
                 <span class="cal-day-dow">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(day + 'T00:00:00').getDay()]}</span>
               </div>
-              <ul class="cal-list">
-                ${byDay[day].map(row).join('')}
-              </ul>
+              <div class="cal-day-body">
+                ${paydayMap[day] ? `<div class="cal-payday">💰 ${paydayMap[day].map(App.esc).join(' & ')} payday</div>` : ''}
+                ${byDay[day] ? `<ul class="cal-list">${byDay[day].map(i => row(i, fundedBy)).join('')}</ul>` : ''}
+              </div>
             </div>`).join('')
           : '<p class="empty">No dated bills this month yet — set due days below and they\'ll show up here.</p>'}
         </section>
+
+        ${paychecks.length ? `
+        <section class="card">
+          <div class="card-head"><h2>Paychecks this month</h2>
+            <span class="card-note">Fixed bills grouped by the paycheck that covers them</span></div>
+          <ul class="cal-list">
+            ${paychecks.map(pc => `
+              <li class="cal-row">
+                <div class="cal-row-main">
+                  <span class="cal-row-name">${App.esc(pc.person)}'s ${S.fmtDate(pc.date)} paycheck</span>
+                  <span class="cal-row-meta">covers ${pc.bills.map(b => App.esc(b.name)).join(', ')}</span>
+                </div>
+                <b class="cal-row-amt">${S.fmt$(pc.amount, 0)}</b>
+              </li>`).join('')}
+          </ul>
+        </section>` : ''}
 
         ${heatmapSection(S, month)}
 
         ${undated.length ? `
         <section class="card">
           <div class="card-head"><h2>No due day set</h2><span class="card-note">tap a bill to place it on the calendar</span></div>
-          <ul class="cal-list">${undated.map(row).join('')}</ul>
+          <ul class="cal-list">${undated.map(i => row(i, fundedBy)).join('')}</ul>
         </section>` : ''}
 
         <section class="card">
@@ -156,14 +185,16 @@
     upcoming: ['', 'upcoming'],
     undated: ['', '']
   };
-  function row(i) {
+  function row(i, fundedBy) {
     const [tone, label] = STATUS[i.status];
     const pill = label ? `<span class="pill ${tone || 'plain'}">${label}</span>` : '';
     const attr = i.kind === 'bill' ? `data-cal-bill="${i.id}"` : `data-cal-wedding="${i.id}"`;
+    const fp = fundedBy && fundedBy[i.id];
+    const fundedMeta = fp && !i.posted ? ` · funded by ${App.esc(fp.person)}'s ${Store.fmtDate(fp.date)} check` : '';
     return `<li class="cal-row status-${i.status}" ${attr} role="button" tabindex="0">
       <div class="cal-row-main">
         <span class="cal-row-name">${App.esc(i.name)}${i.kind === 'wedding' ? ' <span class="cal-tag">wedding</span>' : ''}</span>
-        <span class="cal-row-meta">${i.posted && i.tx ? 'posted ' + Store.fmtDate(i.tx.date) : i.kind === 'wedding' && i.posted ? 'paid' : i.due ? 'due ' + Store.fmtDate(i.due) : 'tap to set a due day'}</span>
+        <span class="cal-row-meta">${i.posted && i.tx ? 'posted ' + Store.fmtDate(i.tx.date) : i.kind === 'wedding' && i.posted ? 'paid' : i.due ? 'due ' + Store.fmtDate(i.due) + fundedMeta : 'tap to set a due day'}</span>
       </div>
       ${pill}
       <b class="cal-row-amt">${Store.fmt$(i.amount, 0)}</b>
