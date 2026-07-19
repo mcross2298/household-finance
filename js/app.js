@@ -264,7 +264,12 @@
     render();
     checkReminders();
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-      navigator.serviceWorker.register('sw.js').catch(() => { /* offline install is best-effort */ });
+      // updateViaCache: 'none' forces a real network fetch of sw.js on every check —
+      // without it, a host that doesn't send Cache-Control on sw.js can let the
+      // browser's ordinary HTTP cache mask a new deploy indefinitely, since the
+      // update algorithm's byte-comparison fetch would just hit that stale cache.
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+        .catch(() => { /* offline install is best-effort */ });
     }
   }
   if (window.Lock) Lock.guard(boot); else boot();
