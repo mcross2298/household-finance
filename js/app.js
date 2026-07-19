@@ -241,7 +241,7 @@
     if (window.Views && Views.transactions && Views.transactions.openAdd) Views.transactions.openAdd();
   });
 
-  window.addEventListener('hashchange', () => render());
+  window.addEventListener('hashchange', () => { if (!(window.Lock && Lock.isLocked())) render(); });
   // Mobile Safari fires `resize` constantly while scrolling (the address bar
   // collapsing/expanding changes viewport height), so a full re-render tied
   // to every resize event made scrolling feel like the page kept restarting.
@@ -260,10 +260,12 @@
       }, 200);
     };
   })());
-  render();
-  checkReminders();
-
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-    navigator.serviceWorker.register('sw.js').catch(() => { /* offline install is best-effort */ });
+  function boot() {
+    render();
+    checkReminders();
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      navigator.serviceWorker.register('sw.js').catch(() => { /* offline install is best-effort */ });
+    }
   }
+  if (window.Lock) Lock.guard(boot); else boot();
 })();
