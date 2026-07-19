@@ -3,7 +3,7 @@
    often redirect the latter to the former, and caching (then replaying) a
    redirected Response for a navigation is what Chrome's install check flags as
    "Response served by service worker has redirections". */
-const CACHE = 'household-finance-v5';
+const CACHE = 'household-finance-v6';
 const SHELL = [
   './',
   './manifest.json',
