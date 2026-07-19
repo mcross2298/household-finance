@@ -37,6 +37,7 @@
       <nav class="side-nav" aria-label="Main">
         <button class="side-search" id="search-btn-desktop"><span class="nav-ico" data-icon="search"></span>Search<kbd>/</kbd></button>
         <a href="#/home" data-route="home"><span class="nav-ico" data-icon="home"></span>Dashboard</a>
+        <a href="#/summary" data-route="summary"><span class="nav-ico" data-icon="compass"></span>Executive Summary</a>
         <a href="#/transactions" data-route="transactions"><span class="nav-ico" data-icon="list"></span>Transactions</a>
         <a href="#/import" data-route="import"><span class="nav-ico" data-icon="upload"></span>Import</a>
         <div class="side-nav-label">Plan</div>
@@ -60,6 +61,7 @@
       <header class="topbar">
         <div class="brand-mark small" aria-hidden="true"><span></span><span></span><span></span></div>
         <div class="topbar-title" id="topbar-title">Household Finance</div>
+        <a href="#/summary" class="topbar-search" aria-label="Executive Summary"><span data-icon="compass"></span></a>
         <button id="search-btn-mobile" class="topbar-search" aria-label="Search"><span data-icon="search"></span></button>
         <button id="theme-toggle-mobile" class="theme-toggle" aria-label="Toggle dark mode"></button>
       </header>
@@ -88,7 +90,9 @@
   <script src="js/icons.js"></script>
   <script src="js/theme.js"></script>
   <script src="js/charts.js"></script>
+  <script src="js/features.js"></script>
   <script src="js/views/dashboard.js"></script>
+  <script src="js/views/summary.js"></script>
   <script src="js/views/transactions.js"></script>
   <script src="js/views/import.js"></script>
   <script src="js/views/budget.js"></script>
@@ -102,6 +106,7 @@
   <script src="js/views/wedding.js"></script>
   <script src="js/views/plan.js"></script>
   <script src="js/views/backup.js"></script>
+  <script src="js/tour.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

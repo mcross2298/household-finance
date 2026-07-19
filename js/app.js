@@ -3,7 +3,7 @@
   'use strict';
 
   const TITLES = {
-    home: 'Dashboard', transactions: 'Transactions', import: 'Import',
+    home: 'Dashboard', summary: 'Executive Summary', transactions: 'Transactions', import: 'Import',
     plan: 'Plan', budget: 'Budget', calendar: 'Bill Calendar', goals: 'Savings Goals',
     house: 'House Plan', invest: 'Investments', wedding: 'Wedding Payoff',
     networth: 'Net Worth', debt: 'Debt Payoff Plan', forecast: 'Forecast', backup: 'Export & Backup'
@@ -264,6 +264,7 @@
     const autoPosted = Store.autoPostDueBills();
     render();
     checkReminders();
+    if (window.Tour) Tour.maybeAutoStart();
     if (autoPosted) toast(autoPosted + ' cash-pay bill' + (autoPosted === 1 ? '' : 's') + ' auto-posted for this month');
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       // updateViaCache: 'none' forces a real network fetch of sw.js on every check —
