@@ -135,6 +135,12 @@
       } else if (!p.catFromSource && (!p.category || p.category === 'Other')) {
         const line = Store.matchBudgetLine({ description: p.description, amount: p.amount, category: '' });
         if (line) { p.category = line.category; p.auto = 'bill'; }
+        else {
+          // No confident match — a fuzzy nearest-neighbor guess still beats a
+          // blank "Other", as long as it's flagged for a second look.
+          const sug = Store.suggestRule(p.description);
+          if (sug) { p.category = sug.category; if (!p.whoFromSource) p.who = sug.who; p.suggested = true; }
+        }
       }
     }
   }
@@ -382,6 +388,7 @@
                       ${App.options(Store.CATEGORIES, p.category)}</select></td>
                     <td><select class="select slim" data-i="${i}" data-f="who">${App.options(Store.WHO, p.who)}</select></td>
                     <td>${p.auto ? `<span class="pill auto" title="${p.auto === 'rule' ? 'Filled from a learned rule' : 'Matched a recurring budget line'}">auto</span>` : ''}
+                        ${p.suggested ? '<span class="pill warn" title="Similar to a merchant you\'ve categorized before — double-check">suggested</span>' : ''}
                         ${dup ? '<span class="pill warn" title="A transaction with this amount at a similar merchant already exists within 3 days">dup</span>' : ''}
                         ${bad ? '<span class="pill bad">fix</span>' : ''}</td>
                   </tr>`;
@@ -395,6 +402,7 @@
             <button class="btn gold" id="rev-commit">Import ${included.length} transaction${included.length === 1 ? '' : 's'}</button>
           </div>
           <p class="help">Rows marked <span class="pill auto">auto</span> were categorized for you — from a learned rule or a matching budget line.
+             <span class="pill warn">suggested</span> rows are a best guess from a similar merchant you've categorized before — worth a second look before importing.
              <span class="pill warn">dup</span> rows look like an existing transaction (same amount, similar merchant, within 3 days) — uncheck them unless they're real repeats.
              <span class="pill bad">fix</span> rows are missing a valid date, amount, or category and will be skipped.</p>
         </section>

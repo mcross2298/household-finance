@@ -261,8 +261,10 @@
     };
   })());
   function boot() {
+    const autoPosted = Store.autoPostDueBills();
     render();
     checkReminders();
+    if (autoPosted) toast(autoPosted + ' cash-pay bill' + (autoPosted === 1 ? '' : 's') + ' auto-posted for this month');
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       // updateViaCache: 'none' forces a real network fetch of sw.js on every check —
       // without it, a host that doesn't send Cache-Control on sw.js can let the

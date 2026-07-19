@@ -16,17 +16,19 @@
     const status = S.budgetLineStatus(S.thisMonth());
     const lineStatus = b => {
       const st = status[b.id];
-      if (!st) return '';
       if (b.type === 'Fixed') {
+        if (!st) return '';
         return st.posted
           ? `<span class="line-status posted">✓ posted ${S.fmtDate(st.tx.date).replace(/, \d{4}$/, '')}</span>`
-          : '<span class="line-status pending">not yet this month</span>';
+          : (b.cashPay ? '<span class="line-status pending">cash-pay — posts automatically on the due day</span>'
+            : '<span class="line-status pending">not yet this month</span>');
       }
-      const spent = st.spent || 0;
-      const over = b.monthly > 0 && spent > +b.monthly;
-      return spent > 0
-        ? `<span class="line-status${over ? ' over' : ''}">${S.fmt$(spent, 0)} of ${S.fmt$(b.monthly, 0)} this month</span>`
-        : '';
+      const spent = (st && st.spent) || 0;
+      const eff = S.effectiveBudget(b);
+      const rolled = b.rolloverEnabled && Math.round(eff - b.monthly) !== 0;
+      const over = eff > 0 && spent > eff;
+      if (!spent && !rolled) return '';
+      return `<span class="line-status${over ? ' over' : ''}">${S.fmt$(spent, 0)} of ${S.fmt$(eff, 0)}${rolled ? ' (rollover)' : ''} this month</span>`;
     };
 
     const section = sec => S.data.budget.filter(b => b.section === sec);
@@ -41,7 +43,7 @@
             <li class="budget-row" data-id="${b.id}" role="button" tabindex="0">
               <div class="budget-main">
                 <span class="budget-name">${App.esc(b.name)}</span>
-                <span class="budget-meta">${App.esc(b.category)} · ${b.type}${b.dueDay ? ' · due day ' + b.dueDay : ''}${b.notes ? ' · ' + App.esc(b.notes) : ''}</span>
+                <span class="budget-meta">${App.esc(b.category)} · ${b.type}${b.dueDay ? ' · due day ' + b.dueDay : ''}${b.cashPay ? ' · cash-pay' : ''}${b.rolloverEnabled ? ' · rollover' : ''}${b.notes ? ' · ' + App.esc(b.notes) : ''}</span>
                 ${lineStatus(b)}
               </div>
               <b>${S.fmt$(b.monthly, 0)}</b>
@@ -164,22 +166,36 @@
           ${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}"${+v.dueDay === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('')}
         </select></label>
         <label class="span2">Notes<input class="input" id="b-notes" value="${App.esc(v.notes)}"></label>
+        <label class="span2 checkline" id="b-cashpay-wrap"><input type="checkbox" id="b-cashpay"${v.cashPay ? ' checked' : ''}>
+          Cash-pay — no statement line ever arrives, so post it automatically on the due day</label>
+        <label class="span2 checkline" id="b-rollover-wrap"><input type="checkbox" id="b-rollover"${v.rolloverEnabled ? ' checked' : ''}>
+          Roll unspent (or overspent) budget into next month</label>
       </div>
       <div class="btn-row">
         <button class="btn gold" id="b-save">${isNew ? 'Add' : 'Save'}</button>
         ${isNew ? '' : '<button class="btn danger ghost" id="b-del">Delete</button>'}
       </div>`);
     const g = id => m.el.querySelector(id);
+    const syncTypeToggles = () => {
+      const type = g('#b-type').value;
+      g('#b-cashpay-wrap').style.display = type === 'Fixed' ? '' : 'none';
+      g('#b-rollover-wrap').style.display = type === 'Discretionary' ? '' : 'none';
+    };
+    g('#b-type').addEventListener('change', syncTypeToggles);
+    syncTypeToggles();
     g('#b-save').addEventListener('click', () => {
       const name = g('#b-name').value.trim();
       const monthly = parseFloat(g('#b-monthly').value);
       if (!name) return App.toast('Name the expense', 'warn');
       if (isNaN(monthly) || monthly < 0) return App.toast('Enter a monthly amount', 'warn');
+      const type = g('#b-type').value;
       const next = {
         id: isNew ? Store.uid() : b.id, name,
         section: g('#b-sec').value, category: g('#b-cat').value,
-        type: g('#b-type').value, monthly: Math.round(monthly * 100) / 100,
+        type, monthly: Math.round(monthly * 100) / 100,
         dueDay: g('#b-due').value ? +g('#b-due').value : null,
+        cashPay: type === 'Fixed' && g('#b-cashpay').checked,
+        rolloverEnabled: type === 'Discretionary' && g('#b-rollover').checked,
         notes: g('#b-notes').value.trim()
       };
       if (isNew) Store.data.budget.push(next); else Object.assign(b, next);
