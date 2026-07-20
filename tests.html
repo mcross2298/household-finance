@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Household Finance — money-math tests</title>
+  <style>
+    body { font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Arial, sans-serif; margin: 24px auto; max-width: 720px; padding: 0 16px; }
+    h1 { font-size: 1.2rem; }
+    .pass { color: #1E7B44; }
+    .fail { color: #C0392B; font-weight: 700; }
+    #summary { font-weight: 800; margin: 12px 0; }
+    li { margin: 3px 0; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <h1>Money-math tests</h1>
+  <p>Assertions against the live data layer (uses an isolated in-memory copy — your real data is untouched). Open this file next to <code>index.html</code>.</p>
+  <div id="summary">running…</div>
+  <ul id="out"></ul>
+
+  <!-- Isolate: stash real data, run against a fresh demo seed, restore afterwards. -->
+  <script>
+    window.__realData = localStorage.getItem('householdFinance.v1');
+    localStorage.removeItem('householdFinance.v1');
+  </script>
+  <script src="js/store.js"></script>
+  <script>
+    const out = document.getElementById('out');
+    let pass = 0, fail = 0;
+    const t = (name, cond, detail) => {
+      const li = document.createElement('li');
+      li.className = cond ? 'pass' : 'fail';
+      li.textContent = (cond ? '✓ ' : '✗ ') + name + (cond ? '' : ' — ' + (detail || ''));
+      out.appendChild(li);
+      cond ? pass++ : fail++;
+    };
+    const S = Store;
+    const near = (a, b, eps) => Math.abs(a - b) <= (eps == null ? 0.01 : eps);
+
+    try {
+    /* formatting */
+    t('fmt$ rounds and signs', S.fmt$(-1234.5, 0) === '−$1,235' && S.fmt$(12.345, 2) === '$12.35', S.fmt$(-1234.5, 0));
+    t('isoFromUs parses 2-digit years', S.isoFromUs('7/3/26') === '2026-07-03', S.isoFromUs('7/3/26'));
+    t('usDate round-trips', S.usDate('2026-07-03') === '07/03/2026', S.usDate('2026-07-03'));
+
+    /* budget & derived */
+    t('budgetTotal = sum of lines', near(S.budgetTotal(), S.data.budget.reduce((s, b) => s + b.monthly, 0)));
+    t('surplus = income − budget', near(S.surplus(), S.incomeTotal() - S.budgetTotal()));
+    // Unlike the fixed two-person model, budgetByPerson() here returns a
+    // roster-shaped `attributed` map — every member's share plus their own
+    // lines should still add back up to the whole budget, regardless of
+    // how many people are in the household.
+    const p = S.budgetByPerson();
+    t('shared split balances across the roster',
+      near(Object.values(p.attributed).reduce((s, v) => s + v, 0), S.budgetTotal()), JSON.stringify(p));
+
+    /* goals */
+    const g = { target: 1000, saved: 250, monthly: 250 };
+    const gm = S.goalMeta(g);
+    t('goalMeta months = ceil(remaining/monthly)', gm.months === 3 && near(gm.pct, 0.25), JSON.stringify(gm));
+
+    /* house scenario */
+    const hs = S.houseScenario({ price: 300000, downPct: 10 });
+    t('house P&I ≈ amortization formula', near(hs.pi, 270000 * (0.065 / 12) / (1 - Math.pow(1 + 0.065 / 12, -360)), 0.5), hs.pi.toFixed(2));
+    t('PMI applies under 20% down', hs.pmi > 0);
+    t('no PMI at 20% down', S.houseScenario({ price: 300000, downPct: 20 }).pmi === 0);
+
+    /* merchant intelligence */
+    t('normalizeMerchant strips junk', S.normalizeMerchant('GIANT #6482 POS 07/03') === 'GIANT', S.normalizeMerchant('GIANT #6482 POS 07/03'));
+    S.data.rules = [];
+    S.learnRule('GIANT #1 ALLENTOWN PA', 'Groceries', 'Shared');
+    t('rule matches across cities', !!S.ruleFor('GIANT #2 BETHLEHEM PA'));
+    t('no false rule match', !S.ruleFor('WAWA 100 EASTON PA'));
+
+    /* dedupe — the demo seed's dates are relative to today (not fixed like
+       Cross-Household-'s real data), so the comparison dates here are built
+       relative to the seeded transaction itself rather than hardcoded. */
+    const t0 = S.data.transactions[1];
+    const near3 = new Date(t0.date + 'T00:00:00'); near3.setDate(near3.getDate() + 2);
+    const far17 = new Date(t0.date + 'T00:00:00'); far17.setDate(far17.getDate() + 17);
+    t('fuzzy dup within 3 days', !!S.likelyDuplicate({ date: near3.toISOString().slice(0, 10), amount: t0.amount, description: t0.description }));
+    t('no dup 17 days out', !S.likelyDuplicate({ date: far17.toISOString().slice(0, 10), amount: t0.amount, description: t0.description }));
+
+    /* debt payoff */
+    const acct = { id: 'x', payment: 290, rate: 8 };
+    S.data.accounts.push({ id: 'x', name: 'T', kind: 'debt', type: 'Loan', owner: 'Shared', payment: 290, rate: 8 });
+    // Snapshot month must be "now" (not a fixed past month) so it's reliably
+    // the latest snapshot whenever this file is actually run.
+    S.saveSnapshot(S.thisMonth(), { x: 4600 });
+    const p0 = S.debtPayoff(acct, 0), p100 = S.debtPayoff(acct, 100);
+    t('payoff months sane at 8% APR', p0.months >= 16 && p0.months <= 18, String(p0.months));
+    t('extra payment: sooner AND less interest', p100.months < p0.months && p100.interest < p0.interest,
+      JSON.stringify([p0, p100]));
+    t('payment below interest flagged', S.debtPayoff({ id: 'x', payment: 10, rate: 8 }, 0).months === null);
+
+    /* forecast ripple */
+    const base = S.forecast(12);
+    S.data.planned.push({ id: 'pl1', name: 'test', month: base.months[3].ym, amount: 500 });
+    const after = S.forecast(12);
+    t('planned one-off ripples to the end', near(base.months[11].balance - after.months[11].balance, 500),
+      String(base.months[11].balance - after.months[11].balance));
+
+    /* CSV round trip */
+    const csv = S.exportCSV();
+    const rows = S.parseCSV(csv);
+    t('CSV header exact workbook order', rows[0].join(',') === S.CSV_HEADER.join(','), rows[0].join(','));
+    t('CSV row count = transactions', rows.length - 1 === S.data.transactions.length);
+    t('csvEscape quotes commas and quotes', S.csvEscape('a,"b"') === '"a,""b"""', S.csvEscape('a,"b"'));
+
+    /* pay cycles — picked dynamically from the household's actual roster
+       instead of hardcoded names, since membership here isn't fixed to two
+       people named Mike and Bri. */
+    const [person1, person2] = S.members();
+    S.data.payCycles = {
+      [person1]: { frequency: 'biweekly', anchor: '2026-06-19' },
+      [person2]: { frequency: 'semimonthly', anchor: '2026-07-01' }
+    };
+    const person1Paydays = S.paydaysInMonth(person1, '2026-07');
+    t('biweekly paydays land 14 days apart', person1Paydays.length === 3
+      && person1Paydays[0] === '2026-07-03' && person1Paydays[1] === '2026-07-17' && person1Paydays[2] === '2026-07-31',
+      JSON.stringify(person1Paydays));
+    const person2Paydays = S.paydaysInMonth(person2, '2026-07');
+    t('semimonthly paydays are the 1st and 16th', person2Paydays.length === 2
+      && person2Paydays[0] === '2026-07-01' && person2Paydays[1] === '2026-07-16', JSON.stringify(person2Paydays));
+    t('unset pay cycle yields no paydays', S.paydaysInMonth('nobody', '2026-07').length === 0);
+    t('a month entirely before the anchor has no paydays', S.paydaysInMonth(person1, '2026-05').length === 0);
+    const rentBill = S.data.budget.find(b => b.name === 'Rent');
+    rentBill.dueDay = 2;
+    const fp = S.fundingPaycheck(rentBill, '2026-07');
+    t('a Shared bill is funded by the closest paycheck on/before its due date, not one after',
+      !!fp && fp.date <= '2026-07-02' && fp.date === '2026-07-01' && fp.person === person2, JSON.stringify(fp));
+    const allocations = S.paycheckAllocations('2026-07');
+    t('paycheck allocations sum to the funded bills\' total',
+      near(allocations.reduce((s, a) => s + a.amount, 0),
+        S.data.budget.filter(b => b.type === 'Fixed' && b.dueDay).reduce((s, b) => s + b.monthly, 0)),
+      JSON.stringify(allocations));
+
+    // Note: Cross-Household-'s harness also checks integrityCheck() (seed
+    // passes, bad rows get caught) — that function doesn't exist in this
+    // repo yet (a separate, older hardening gap, not part of this port), so
+    // those two assertions aren't included here.
+
+    document.getElementById('summary').innerHTML = fail
+      ? '<span class="fail">' + fail + ' failed</span> · ' + pass + ' passed'
+      : '<span class="pass">All ' + pass + ' tests passed</span>';
+    } catch (e) {
+      document.getElementById('summary').innerHTML = '<span class="fail">Test run crashed: ' + e.message + '</span>';
+    } finally {
+      // ALWAYS restore the user's real data, even if a test throws
+      if (window.__realData) localStorage.setItem('householdFinance.v1', window.__realData);
+      else localStorage.removeItem('householdFinance.v1');
+    }
+  </script>
+</body>
+</html>
