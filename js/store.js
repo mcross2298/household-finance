@@ -87,7 +87,7 @@
       rules: [],
       importBatches: [],
       closes: {},
-      reminders: { enabled: false, daysAhead: 3, log: {} },
+      reminders: { enabled: false, daysAhead: 3, log: {}, insightsEnabled: false, insightLog: {} },
       accounts: accounts,
       snapshots: { [ym]: bal },
       planned: [],
@@ -177,7 +177,7 @@
      so a backup from any version restores cleanly. */
   function migrate() {
     const v = +data.version || 1;
-    if (v >= 9) return;
+    if (v >= 10) return;
     if (v < 2) {
       data.rules = data.rules || [];
       data.importBatches = data.importBatches || [];
@@ -221,7 +221,11 @@
         if (!data.payCycles[m]) data.payCycles[m] = { frequency: 'biweekly', anchor: null };
       });
     }
-    data.version = 9;
+    if (v < 10) {
+      data.reminders.insightsEnabled = data.reminders.insightsEnabled || false;
+      data.reminders.insightLog = data.reminders.insightLog || {};
+    }
+    data.version = 10;
     save();
   }
   function save() {
@@ -240,7 +244,7 @@
     return {
       version: 9, lastUpdated: now.toISOString(), needsExport: false,
       rules: [], importBatches: [], closes: {},
-      reminders: { enabled: false, daysAhead: 3, log: {} },
+      reminders: { enabled: false, daysAhead: 3, log: {}, insightsEnabled: false, insightLog: {} },
       accounts: [], snapshots: {}, planned: [],
       rolloverBalances: {}, subReviewed: {}, forecastScenarios: [], streaksEnabled: false,
       members: ['You'], incomes: { You: 0 },
@@ -993,19 +997,36 @@
 
   /* Fuzzy duplicate check: same cents, dates within ±3 days, similar merchant.
      Catches overlapping statement periods and pending→posted date shifts that
-     exact date+description matching misses. */
+     exact date+description matching misses. A second pass below catches what
+     the 3-day window can't: a Fixed bill paid manually days before (or after)
+     its autopay date — same budget line, same billing month, amount still
+     close, but too many days apart for the fuzzy check above to see it. */
   function likelyDuplicate(row, txs) {
+    const pool = txs || data.transactions;
     const amt = Math.round((+row.amount || 0) * 100);
-    if (!amt || !row.date) return null;
-    const d = new Date(row.date + 'T00:00:00');
-    const key = merchantKey(row.description);
-    const first = key.split(' ')[0];
-    for (const t of (txs || data.transactions)) {
-      if (Math.round((+t.amount || 0) * 100) !== amt) continue;
-      const days = Math.abs(new Date(t.date + 'T00:00:00') - d) / 86400000;
-      if (days > 3) continue;
-      const tKey = merchantKey(t.description);
-      if (!key || !tKey || tKey === key || tKey.split(' ')[0] === first) return t;
+    if (amt && row.date) {
+      const d = new Date(row.date + 'T00:00:00');
+      const key = merchantKey(row.description);
+      const first = key.split(' ')[0];
+      for (const t of pool) {
+        if (Math.round((+t.amount || 0) * 100) !== amt) continue;
+        const days = Math.abs(new Date(t.date + 'T00:00:00') - d) / 86400000;
+        if (days > 3) continue;
+        const tKey = merchantKey(t.description);
+        if (!key || !tKey || tKey === key || tKey.split(' ')[0] === first) return t;
+      }
+    }
+    if (!row.date) return null;
+    const line = matchBudgetLine({ description: row.description, amount: row.amount, category: row.category || '' });
+    if (line && line.type === 'Fixed') {
+      const month = row.date.slice(0, 7);
+      const rowAmt = +row.amount || 0;
+      for (const t of pool) {
+        if (t.date.slice(0, 7) !== month || matchBudgetLine(t) !== line) continue;
+        const tAmt = +t.amount || 0;
+        const tol = Math.max(tAmt, rowAmt) * 0.10;
+        if (Math.abs(tAmt - rowAmt) <= tol) return t;
+      }
     }
     return null;
   }
@@ -1110,9 +1131,12 @@
   }
 
   /* Everything with a date (or that should have one) in a month: Fixed budget
-     lines (due on their dueDay, "undated" until one is set) and wedding vendor
-     payments. posted comes from M1's bill matching, so paying a bill checks it
-     off the calendar automatically. */
+     lines (due on their dueDay, "undated" until one is set), any budget line
+     with a renewal date set (insurance policies, contract terms — any type,
+     not just Fixed), and wedding vendor payments. posted comes from M1's bill
+     matching, so paying a bill checks it off the calendar automatically. A
+     renewal never has a "posted" concept of its own — it just ages through
+     upcoming/soon/overdue by date, same as everything else here. */
   function monthSchedule(ym) {
     const month = ym || thisMonth();
     const st = budgetLineStatus(month);
@@ -1127,6 +1151,10 @@
         kind: 'bill', id: b.id, name: b.name, amount: +b.monthly || 0,
         due, posted, tx: posted ? st[b.id].tx : null, section: b.section
       });
+    }
+    for (const b of data.budget) {
+      if (!b.renewalDate || b.renewalDate.slice(0, 7) !== month) continue;
+      items.push({ kind: 'renewal', id: b.id, name: b.name, amount: 0, due: b.renewalDate, posted: false, section: b.section });
     }
     for (const v of data.wedding.vendors) {
       if (v.due && v.due.slice(0, 7) === month && (+v.amount || 0) > 0) {
@@ -1144,6 +1172,22 @@
     return items;
   }
 
+  /* Everything unposted that's due within `days` of today, overdue items
+     included — the shared pool behind both the dashboard's "due soon" digest
+     and the reminder system below. Unlike dueForReminder, this ignores the
+     reminders opt-in and the "already reminded" log: it's a read of what's
+     true right now, not a decision about whether to notify. */
+  function dueSoonItems(days) {
+    const horizon = days == null ? 3 : days;
+    const today = todayIso();
+    const cur = thisMonth();
+    const pool = monthSchedule(cur).concat(
+      // near month-end the horizon spills into next month's first bills
+      monthSchedule(nextMonth(cur)).filter(i => i.due && dayDiff(today, i.due) <= horizon)
+    );
+    return pool.filter(i => i.due && !i.posted && dayDiff(today, i.due) <= horizon)
+      .sort((a, b) => a.due < b.due ? -1 : 1);
+  }
   /* Bills (and wedding payments) that deserve a reminder right now: due within
      daysAhead, not posted, not already reminded for this due date. */
   function dueForReminder() {
@@ -1151,14 +1195,7 @@
     if (!r || !r.enabled) return [];
     const today = todayIso();
     const horizon = +r.daysAhead || 3;
-    const cur = thisMonth();
-    const pool = monthSchedule(cur).concat(
-      // near month-end the horizon spills into next month's first bills
-      monthSchedule(nextMonth(cur)).filter(i => i.due && dayDiff(today, i.due) <= horizon)
-    );
-    return pool.filter(i => i.due && !i.posted
-      && dayDiff(today, i.due) <= horizon && dayDiff(today, i.due) >= 0
-      && !r.log[i.id + '@' + i.due]);
+    return dueSoonItems(horizon).filter(i => dayDiff(today, i.due) >= 0 && !r.log[i.id + '@' + i.due]);
   }
   function markReminded(items) {
     for (const i of items) data.reminders.log[i.id + '@' + i.due] = todayIso();
@@ -1166,6 +1203,61 @@
     const cutoff = todayIso().slice(0, 7);
     for (const k of Object.keys(data.reminders.log)) {
       if (k.split('@')[1].slice(0, 7) < prevMonth(cutoff)) delete data.reminders.log[k];
+    }
+    localStorage.setItem(KEY, JSON.stringify(data)); // no cf:change — nothing visual changed
+  }
+
+  /* Insights worth a notification, not just a dashboard card — a deliberately
+     narrow, stably-keyed slice of insights() (which recomputes fresh every
+     render and mostly has no identity to dedupe against). A price jump keys
+     on the merchant + the new price, so a bigger jump later still notifies;
+     a tight forecast month keys on the month + its severity, so an escalation
+     from "tight" to "negative" notifies again; a renewal keys on the line +
+     its renewal date, so updating the date to the next cycle naturally opens
+     up a fresh nudge — the same finding never repeats every time the app
+     opens, but a real change always does. */
+  function dueInsightNudges() {
+    const r = data.reminders;
+    if (!r || !r.insightsEnabled) return [];
+    const log = r.insightLog || {};
+    const out = [];
+    for (const c of priceCreeps()) {
+      const key = 'creep:' + c.merchant + '@' + c.to.toFixed(2);
+      if (!log[key]) out.push({ key, text: `${c.merchant} went up: ${fmt$(c.from, 2)} → ${fmt$(c.to, 2)}/mo.`,
+        href: '#/transactions?q=' + encodeURIComponent(c.merchant) });
+    }
+    if (Object.keys(data.snapshots).length) {
+      const fc = forecast(12);
+      const tight = fc.months.find(m => m.tone === 'bad') || fc.months.find(m => m.tone === 'warn');
+      if (tight) {
+        const key = 'forecast:' + tight.ym + ':' + tight.tone;
+        if (!log[key]) out.push({
+          key,
+          text: tight.tone === 'bad'
+            ? `Cash-flow forecast goes negative in ${fmtMonth(tight.ym)} (${fmt$(tight.balance, 0)}).`
+            : `${fmtMonth(tight.ym)} looks tight — projected liquid balance ${fmt$(tight.balance, 0)}.`,
+          href: '#/forecast'
+        });
+      }
+    }
+    const today = todayIso();
+    for (const b of data.budget) {
+      if (!b.renewalDate) continue;
+      const days = dayDiff(today, b.renewalDate);
+      if (days < 0 || days > 14) continue; // past renewals go stale, not urgent — update the date instead of re-nagging
+      const key = 'renewal:' + b.id + '@' + b.renewalDate;
+      if (!log[key]) out.push({ key, text: `${b.name} renews ${fmtDate(b.renewalDate)}.`,
+        href: '#/budget?section=' + encodeURIComponent(b.section) });
+    }
+    return out;
+  }
+  function markInsightsNudged(items) {
+    for (const i of items) data.reminders.insightLog[i.key] = todayIso();
+    // keep the log from growing forever — entries older than 6 months age out
+    const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - 6);
+    const cutoffIso = cutoff.toISOString().slice(0, 10);
+    for (const k of Object.keys(data.reminders.insightLog)) {
+      if (data.reminders.insightLog[k] < cutoffIso) delete data.reminders.insightLog[k];
     }
     localStorage.setItem(KEY, JSON.stringify(data)); // no cf:change — nothing visual changed
   }
@@ -1454,7 +1546,7 @@
     monthPace, safeToSpend, avgSpendByCategory, categoryTrends, priceCreeps, unusualTx,
     subscriptionNudges, markSubscriptionReviewed,
     prevMonth, nextMonth, daysInMonth, monthSchedule,
-    dueForReminder, markReminded,
+    dueSoonItems, dueForReminder, markReminded, dueInsightNudges, markInsightsNudged,
     closeChecklist, monthSummary, closeMonth,
     balanceAt, latestBalance, netWorthSeries, saveSnapshot, debtPayoff, forecast,
     debtStrategies, debtStrategiesSummary, debtPayoffOrder, debtRollupPlan, debtPayoffOrderComparison,

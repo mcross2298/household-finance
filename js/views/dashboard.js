@@ -50,6 +50,7 @@
     const spent = S.txInMonth(month).reduce((s, t) => s + (+t.amount || 0), 0);
     const progress = S.goalsProgress();
     const insights = S.insights();
+    const dueSoon = isCurrent ? S.dueSoonItems(3) : [];
 
     const layout = loadLayout();
     const cards = {
@@ -131,6 +132,18 @@
             <div class="sts-value">${S.fmt$(sts.safe, 0)}</div>
             <div class="sts-sub">${S.fmt$(sts.spent, 0)} spent so far${sts.upcomingCount
               ? ` · ${S.fmt$(sts.upcoming, 0)} reserved for ${sts.upcomingCount} upcoming bill${sts.upcomingCount === 1 ? '' : 's'}` : ''}</div>
+          </a>
+          <a class="due-soon" href="#/calendar">
+            <div class="due-soon-label">Due in the next 3 days</div>
+            ${dueSoon.length ? `<ul class="due-soon-list">
+              ${dueSoon.slice(0, 3).map(i => `
+                <li class="due-soon-row${i.status === 'overdue' ? ' overdue' : ''}">
+                  <span class="due-soon-name">${App.esc(i.name)}</span>
+                  <span class="due-soon-when">${i.status === 'overdue' ? 'overdue' : S.fmtDate(i.due)}</span>
+                  <b class="due-soon-amt">${i.kind === 'renewal' ? 'Renews' : S.fmt$(i.amount, 0)}</b>
+                </li>`).join('')}
+              ${dueSoon.length > 3 ? `<li class="due-soon-more">+${dueSoon.length - 3} more →</li>` : ''}
+            </ul>` : `<div class="due-soon-none">Nothing due — you're clear.</div>`}
           </a>` : ''}
           <div class="kpi-grid">
             ${kpi('Monthly Budget', S.fmt$(budget, 0), 'recurring plan', null, '#/budget')}

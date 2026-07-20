@@ -14,8 +14,15 @@
     const items = S.monthSchedule(month);
     const dated = items.filter(i => i.due);
     const undated = items.filter(i => !i.due);
-    const posted = items.filter(i => i.posted);
-    const dueSoon = items.filter(i => i.status === 'soon');
+    // Renewals have no "posted" concept — they'd sit in the denominator
+    // forever and make this ratio look permanently incomplete.
+    const postable = items.filter(i => i.kind !== 'renewal');
+    const posted = postable.filter(i => i.posted);
+    // "Due this week" pairs a count with a dollar sum — a renewal has no
+    // amount of its own, so mixing one in would read as a confusing "$0 bill".
+    // It still shows in the day-by-day schedule below either way. Overdue is
+    // just a count, so a renewal that's slipped past its date belongs in it.
+    const dueSoon = items.filter(i => i.status === 'soon' && i.kind !== 'renewal');
     const overdue = items.filter(i => i.status === 'overdue');
     const last = S.prevMonth(S.thisMonth());
     const lastCheck = S.closeChecklist(last);
@@ -51,7 +58,7 @@
         <section class="card card-navy stat-band">
           ${stat('Due this week', dueSoon.length ? S.fmt$(dueSoon.reduce((s, i) => s + i.amount, 0), 0) + ' · ' + dueSoon.length : '—')}
           ${stat('Overdue', overdue.length ? String(overdue.length) : 'none', overdue.length ? 'bad' : '')}
-          ${stat('Posted', posted.length + ' of ' + items.length)}
+          ${stat('Posted', posted.length + ' of ' + postable.length)}
           ${stat('Month total', S.fmt$(items.reduce((s, i) => s + i.amount, 0), 0))}
         </section>
 
@@ -127,6 +134,11 @@
       }));
     root.querySelectorAll('[data-cal-wedding]').forEach(li =>
       li.addEventListener('click', () => { location.hash = '#/wedding'; }));
+    root.querySelectorAll('[data-cal-renewal]').forEach(li =>
+      li.addEventListener('click', () => {
+        const b = S.data.budget.find(x => x.id === li.dataset.calRenewal);
+        if (b) App.go('budget', { section: b.section });
+      }));
 
     wireReminders(root);
 
@@ -136,12 +148,39 @@
     if (viewBtn) viewBtn.addEventListener('click', () => summaryModal(last));
 
     const incoming = App.routeParams();
+    if (incoming.markpaid) {
+      App.clearRouteParams();
+      const b = S.data.budget.find(x => x.id === incoming.markpaid);
+      if (b) markPaidFromNotification(b, incoming.due);
+    }
     if (incoming.close) {
       App.clearRouteParams();
       if (S.data.closes[incoming.close]) summaryModal(incoming.close);
       else closeWizard(incoming.close);
     }
   };
+
+  /* Landed here from a notification's "Mark paid" action. Posts the same
+     shape autoPostDueBills() uses for cash-pay bills — the user already made
+     a deliberate one-tap choice, so this carries the same trust level. */
+  function markPaidFromNotification(b, due) {
+    const S = Store;
+    // Only Fixed lines carry a posted/not-posted state at all (monthSchedule,
+    // and so the notification this came from, only ever surfaces those) — a
+    // stale link tapped after the line's type changed shouldn't post anything.
+    if (b.type !== 'Fixed') return;
+    const st = S.budgetLineStatus(S.thisMonth());
+    if (st[b.id] && st[b.id].posted) { App.toast(b.name + ' is already posted'); return; }
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(due || '') ? due : new Date().toISOString().slice(0, 10);
+    S.data.transactions.push({
+      id: S.uid(), date, category: b.category, description: b.name,
+      amount: +b.monthly || 0, who: b.section, account: 'Auto-posted',
+      notes: 'Marked paid from a notification'
+    });
+    S.touchTransactions(); S.save();
+    App.render({ resetScroll: false });
+    App.toast('Marked "' + b.name + '" paid');
+  }
 
   const stat = (label, value, tone) =>
     `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value${tone ? ' ' + tone : ''}">${value}</div></div>`;
@@ -188,16 +227,25 @@
   function row(i, fundedBy) {
     const [tone, label] = STATUS[i.status];
     const pill = label ? `<span class="pill ${tone || 'plain'}">${label}</span>` : '';
-    const attr = i.kind === 'bill' ? `data-cal-bill="${i.id}"` : `data-cal-wedding="${i.id}"`;
+    const attr = i.kind === 'bill' ? `data-cal-bill="${i.id}"`
+      : i.kind === 'renewal' ? `data-cal-renewal="${i.id}"`
+      : `data-cal-wedding="${i.id}"`;
     const fp = fundedBy && fundedBy[i.id];
     const fundedMeta = fp && !i.posted ? ` · funded by ${App.esc(fp.person)}'s ${Store.fmtDate(fp.date)} check` : '';
+    const meta = i.posted && i.tx ? 'posted ' + Store.fmtDate(i.tx.date)
+      : i.kind === 'wedding' && i.posted ? 'paid'
+      : i.kind === 'renewal' ? 'renews ' + Store.fmtDate(i.due)
+      : i.due ? 'due ' + Store.fmtDate(i.due) + fundedMeta
+      : 'tap to set a due day';
+    const tag = i.kind === 'wedding' ? ' <span class="cal-tag">wedding</span>'
+      : i.kind === 'renewal' ? ' <span class="cal-tag">renewal</span>' : '';
     return `<li class="cal-row status-${i.status}" ${attr} role="button" tabindex="0">
       <div class="cal-row-main">
-        <span class="cal-row-name">${App.esc(i.name)}${i.kind === 'wedding' ? ' <span class="cal-tag">wedding</span>' : ''}</span>
-        <span class="cal-row-meta">${i.posted && i.tx ? 'posted ' + Store.fmtDate(i.tx.date) : i.kind === 'wedding' && i.posted ? 'paid' : i.due ? 'due ' + Store.fmtDate(i.due) + fundedMeta : 'tap to set a due day'}</span>
+        <span class="cal-row-name">${App.esc(i.name)}${tag}</span>
+        <span class="cal-row-meta">${meta}</span>
       </div>
       ${pill}
-      <b class="cal-row-amt">${Store.fmt$(i.amount, 0)}</b>
+      ${i.kind === 'renewal' ? '' : `<b class="cal-row-amt">${Store.fmt$(i.amount, 0)}</b>`}
     </li>`;
   }
 
@@ -243,7 +291,9 @@
       <p class="help" id="rem-status">${
         !supported ? 'This browser doesn\'t support notifications — upcoming bills still surface in the Dashboard insights and here.'
         : perm === 'denied' ? '⚠ Notifications are blocked for this app in your browser settings. Upcoming bills still surface in the Dashboard insights.'
-        : 'Reminders are checked when you open the app and fire as a notification where the platform allows it (iOS home-screen apps are restrictive) — the Dashboard insights always show what\'s due regardless. Everything stays on this device.'}</p>`;
+        : 'Reminders are checked when you open the app and fire as a notification where the platform allows it (iOS home-screen apps are restrictive) — the Dashboard insights always show what\'s due regardless. Everything stays on this device.'}</p>
+      <label class="checkline" style="margin-top:10px"><input type="checkbox" id="rem-insights"${r.insightsEnabled ? ' checked' : ''}>
+        Also notify me about insights worth a look (price jumps, tight forecast months)</label>`;
   }
   function wireReminders(root) {
     const toggle = root.querySelector('#rem-toggle');
@@ -268,6 +318,23 @@
     if (days) days.addEventListener('change', () => {
       Store.data.reminders.daysAhead = +days.value;
       Store.save();
+    });
+    const insightsToggle = root.querySelector('#rem-insights');
+    if (insightsToggle) insightsToggle.addEventListener('change', async () => {
+      const r = Store.data.reminders;
+      if (insightsToggle.checked) {
+        if ('Notification' in window && Notification.permission === 'default') {
+          try { await Notification.requestPermission(); } catch (e) { /* user dismissed */ }
+        }
+        r.insightsEnabled = true;
+        Store.save();
+        App.toast('Notification' in window && Notification.permission === 'granted'
+          ? 'Insight nudges on' : 'Insight nudges on — insights only (notifications unavailable)');
+        App.checkInsightNudges();
+      } else {
+        r.insightsEnabled = false;
+        Store.save(); App.toast('Insight nudges off');
+      }
     });
   }
 

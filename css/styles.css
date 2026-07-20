@@ -265,6 +265,10 @@ a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 
 .callout.bad { background: var(--bad-bg); border-left-color: var(--bad); }
 .export-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 
+/* install-prompt re-offer banner — lives outside #view so it survives route renders */
+.install-banner-inner { max-width: 1040px; margin: 0 auto; padding: 10px 16px 0; }
+.install-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
 /* import review: "who does this belong to" callout */
 .rev-who-banner {
   background: var(--blue-card); border: 1.5px solid var(--navy-soft); border-radius: 10px;
@@ -666,6 +670,24 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .sts.neg { border-left-color: #E36053; }
 .sts.neg .sts-value { color: #F0A196; }
 .sts-sub { font-size: .78rem; color: #A9B8D4; }
+
+.due-soon {
+  display: block; text-decoration: none; color: inherit;
+  background: rgba(255, 255, 255, .07); border-radius: 12px;
+  border-left: 3px solid var(--gold);
+  padding: 12px 16px; margin-bottom: 14px;
+  transition: background .15s;
+}
+.due-soon:hover, .due-soon:focus-visible { background: rgba(255, 255, 255, .13); }
+.due-soon-label { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); font-weight: 700; margin-bottom: 8px; }
+.due-soon-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.due-soon-row { display: flex; align-items: baseline; gap: 8px; font-size: .84rem; color: #fff; }
+.due-soon-name { flex: 1; }
+.due-soon-when { color: #A9B8D4; font-size: .76rem; white-space: nowrap; }
+.due-soon-amt { font-variant-numeric: tabular-nums; }
+.due-soon-row.overdue .due-soon-when { color: #F0A196; font-weight: 700; }
+.due-soon-more { font-size: .78rem; color: #A9B8D4; }
+.due-soon-none { font-size: .84rem; color: #A9B8D4; }
 
 .meter { position: relative; overflow: visible; }
 .meter-fill { max-width: 100%; }

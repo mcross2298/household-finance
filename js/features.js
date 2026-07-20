@@ -8,7 +8,7 @@
 
   window.Features = [
     { id: 'home', route: 'home', icon: 'home', title: 'Dashboard',
-      blurb: 'Safe-to-spend, this month’s budget vs. actual, and insights, all at a glance.' },
+      blurb: 'Safe-to-spend, what’s due in the next few days, this month’s budget vs. actual, and insights, all at a glance.' },
     { id: 'summary', route: 'summary', icon: 'compass', title: 'Executive Summary',
       blurb: 'A one-page financial health snapshot, plus everything this app can do.' },
     { id: 'transactions', route: 'transactions', icon: 'list', title: 'Transactions',
@@ -18,7 +18,7 @@
     { id: 'budget', route: 'budget', icon: 'grid', title: 'Budget',
       blurb: 'Recurring income and spending lines, split across the household or Shared.' },
     { id: 'calendar', route: 'calendar', icon: 'calendar', title: 'Bill Calendar',
-      blurb: 'Upcoming bills with due dates, auto-pay tracking, reminders, and which paycheck covers each one.' },
+      blurb: 'Upcoming bills with due dates, auto-pay tracking, policy and contract renewals, bill and insight reminders, and which paycheck covers each one.' },
     { id: 'goals', route: 'goals', icon: 'target', title: 'Savings Goals',
       blurb: 'Track progress toward the house, wedding, and any other savings target.' },
     { id: 'house', route: 'house', icon: 'house', title: 'House Plan',

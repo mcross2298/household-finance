@@ -49,7 +49,7 @@
             <li class="budget-row" data-id="${b.id}" role="button" tabindex="0">
               <div class="budget-main">
                 <span class="budget-name">${App.esc(b.name)}${streakBadge(b)}</span>
-                <span class="budget-meta">${App.esc(b.category)} · ${b.type}${b.dueDay ? ' · due day ' + b.dueDay : ''}${b.cashPay ? ' · cash-pay' : ''}${b.rolloverEnabled ? ' · rollover' : ''}${b.notes ? ' · ' + App.esc(b.notes) : ''}</span>
+                <span class="budget-meta">${App.esc(b.category)} · ${b.type}${b.dueDay ? ' · due day ' + b.dueDay : ''}${b.cashPay ? ' · cash-pay' : ''}${b.rolloverEnabled ? ' · rollover' : ''}${b.renewalDate ? ' · renews ' + S.fmtDate(b.renewalDate) : ''}${b.notes ? ' · ' + App.esc(b.notes) : ''}</span>
                 ${lineStatus(b)}
               </div>
               <b>${S.fmt$(b.monthly, 0)}</b>
@@ -214,7 +214,8 @@
           <option value="">— none —</option>
           ${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}"${+v.dueDay === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('')}
         </select></label>
-        <label class="span2">Notes<input class="input" id="b-notes" value="${App.esc(v.notes)}"></label>
+        <label>Renews<input class="input" type="date" id="b-renewal" value="${v.renewalDate || ''}"></label>
+        <label class="span2">Notes<input class="input" id="b-notes" value="${App.esc(v.notes)}" placeholder="e.g. policy #, provider, account #"></label>
         <label class="span2 checkline" id="b-cashpay-wrap"><input type="checkbox" id="b-cashpay"${v.cashPay ? ' checked' : ''}>
           Cash-pay — no statement line ever arrives, so post it automatically on the due day</label>
         <label class="span2 checkline" id="b-rollover-wrap"><input type="checkbox" id="b-rollover"${v.rolloverEnabled ? ' checked' : ''}>
@@ -243,6 +244,7 @@
         section: g('#b-sec').value, category: g('#b-cat').value,
         type, monthly: Math.round(monthly * 100) / 100,
         dueDay: g('#b-due').value ? +g('#b-due').value : null,
+        renewalDate: g('#b-renewal').value || null,
         cashPay: type === 'Fixed' && g('#b-cashpay').checked,
         rolloverEnabled: type === 'Discretionary' && g('#b-rollover').checked,
         notes: g('#b-notes').value.trim()
