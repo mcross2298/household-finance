@@ -77,7 +77,7 @@
             <li><b>PDF</b> — the statement is read in your browser (nothing uploaded anywhere); transaction-looking lines are extracted for review.</li>
             <li><b>CSV</b> — columns are mapped to the standard schema; categories and Who are validated against the fixed lists.</li>
             <li><b>Auto-categorize</b> — merchants you've categorized before are filled in from your rules and marked <i>auto</i>; recurring bills inherit their budget line's category.</li>
-            <li><b>Review</b> — fix categories, uncheck junk rows, then commit. Likely duplicates (same amount within a few days at a similar merchant) are flagged.</li>
+            <li><b>Review</b> — fix categories, uncheck junk rows, then commit. Likely duplicates are flagged — same amount within a few days at a similar merchant, or a recurring bill that's already posted this month.</li>
           </ol>
         </section>
       </div>`;
@@ -389,7 +389,7 @@
                     <td><select class="select slim" data-i="${i}" data-f="who">${App.options(Store.WHO, p.who)}</select></td>
                     <td>${p.auto ? `<span class="pill auto" title="${p.auto === 'rule' ? 'Filled from a learned rule' : 'Matched a recurring budget line'}">auto</span>` : ''}
                         ${p.suggested ? '<span class="pill warn" title="Similar to a merchant you\'ve categorized before — double-check">suggested</span>' : ''}
-                        ${dup ? '<span class="pill warn" title="A transaction with this amount at a similar merchant already exists within 3 days">dup</span>' : ''}
+                        ${dup ? '<span class="pill warn" title="A transaction with this amount at a similar merchant already exists nearby, or this recurring bill already has a matching transaction this month">dup</span>' : ''}
                         ${bad ? '<span class="pill bad">fix</span>' : ''}</td>
                   </tr>`;
                 }).join('')}
@@ -403,7 +403,7 @@
           </div>
           <p class="help">Rows marked <span class="pill auto">auto</span> were categorized for you — from a learned rule or a matching budget line.
              <span class="pill warn">suggested</span> rows are a best guess from a similar merchant you've categorized before — worth a second look before importing.
-             <span class="pill warn">dup</span> rows look like an existing transaction (same amount, similar merchant, within 3 days) — uncheck them unless they're real repeats.
+             <span class="pill warn">dup</span> rows look like an existing transaction (same amount, similar merchant, nearby date) or a recurring bill already posted this month — uncheck them unless they're real repeats.
              <span class="pill bad">fix</span> rows are missing a valid date, amount, or category and will be skipped.</p>
         </section>
       </div>`;

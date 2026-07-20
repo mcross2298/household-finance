@@ -3,7 +3,7 @@
    often redirect the latter to the former, and caching (then replaying) a
    redirected Response for a navigation is what Chrome's install check flags as
    "Response served by service worker has redirections". */
-const CACHE = 'household-finance-v6';
+const CACHE = 'household-finance-v7';
 const SHELL = [
   './',
   './manifest.json',
@@ -52,13 +52,24 @@ self.addEventListener('activate', e => {
   );
 });
 
-/* Tapping a bill reminder focuses the app on the Bill Calendar. */
+/* Tapping a bill reminder focuses the app on the Bill Calendar; an insight
+   nudge instead carries its own data.href (e.g. Forecast, or a filtered
+   Transactions search) since "worth a look" doesn't have one fixed home.
+   Tapping the bill notification's "Mark paid" action (only offered when
+   exactly one bill was due) routes to a drill-down URL calendar.js reads on
+   mount and acts on — the same one-shot query-param pattern already used for
+   month-end close links. */
 self.addEventListener('notificationclick', e => {
+  const action = e.action;
+  const data = e.notification.data || {};
   e.notification.close();
+  const url = action === 'paid' && data.billId
+    ? './#/calendar?markpaid=' + encodeURIComponent(data.billId) + '&due=' + encodeURIComponent(data.due || '')
+    : './' + (data.href || '#/calendar');
   e.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      for (const c of list) { c.navigate('./#/calendar'); return c.focus(); }
-      return self.clients.openWindow('./#/calendar');
+      for (const c of list) { c.navigate(url); return c.focus(); }
+      return self.clients.openWindow(url);
     })
   );
 });

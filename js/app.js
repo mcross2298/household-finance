@@ -185,7 +185,27 @@
   const options = (list, sel) =>
     list.map(v => `<option value="${esc(v)}"${v === sel ? ' selected' : ''}>${esc(v)}</option>`).join('');
 
-  /* ---------- bill reminders ---------- */
+  /* ---------- bill & insight reminders ---------- */
+  /* Shared by both reminder types below: a notification where the platform
+     allows it, via the service worker when one's controlling the page so
+     actions/data work, falling back to the plain Notification API otherwise.
+     `done` only runs once the notification actually shows, so a later
+     permission grant still fires it instead of it being silently skipped. */
+  function notifyLocal(title, opts, done) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready
+        .then(reg => reg.showNotification(title, opts))
+        .then(done)
+        .catch(() => { try { new Notification(title, { body: opts.body }); done(); } catch (e) { /* leave unlogged; retry next open */ } });
+    } else {
+      // The plain Notification API (no service worker controlling the page
+      // yet) doesn't support actions/data at all — a plain heads-up is the
+      // honest maximum here.
+      try { new Notification(title, { body: opts.body }); done(); } catch (e) { /* leave unlogged; retry next open */ }
+    }
+  }
+
   /* Fires when the app opens or returns to the foreground — a local-only PWA
      has no server to push from, so this is the honest maximum: a notification
      where the platform allows it, and the Dashboard insights either way. */
@@ -195,27 +215,89 @@
     const title = due.length === 1 ? 'Bill due: ' + due[0].name : due.length + ' bills due soon';
     const body = due.map(d =>
       d.name + ' — ' + Store.fmt$(d.amount, 0) + ' due ' + Store.fmtDate(d.due)).join('\n');
-    const done = () => Store.markReminded(due);
-    if ('Notification' in window && Notification.permission === 'granted') {
-      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.ready
-          .then(reg => reg.showNotification(title, { body, icon: 'icons/icon-192.png', tag: 'cf-bills' }))
-          .then(done)
-          .catch(() => { try { new Notification(title, { body }); done(); } catch (e) { /* leave unlogged; retry next open */ } });
-      } else {
-        try { new Notification(title, { body }); done(); } catch (e) { /* leave unlogged; retry next open */ }
-      }
+    const opts = { body, icon: 'icons/icon-192.png', tag: 'cf-bills' };
+    // A single due bill is unambiguous enough to offer a one-tap "Mark paid"
+    // action right on the notification; with more than one due, which bill it
+    // meant would be a guess, so only the default "open the calendar" applies.
+    if (due.length === 1) {
+      opts.data = { billId: due[0].id, due: due[0].due };
+      opts.actions = [{ action: 'paid', title: 'Mark paid' }];
     }
     // No permission → the insight feed carries it; don't mark as reminded so a
     // later grant still notifies.
+    notifyLocal(title, opts, () => Store.markReminded(due));
+  }
+
+  /* Opt-in separately from bill reminders — a price jump or a tight forecast
+     month is worth surfacing, but it's a softer, more discretionary heads-up
+     than a bill coming due, so it gets its own toggle rather than riding
+     along with "remind me before bills are due". */
+  function checkInsightNudges() {
+    const items = Store.dueInsightNudges();
+    if (!items.length) return;
+    const title = items.length === 1 ? 'Worth a look' : items.length + ' things worth a look';
+    const body = items.map(i => i.text).join('\n');
+    const opts = { body, icon: 'icons/icon-192.png', tag: 'cf-insights', data: { href: items[0].href } };
+    notifyLocal(title, opts, () => Store.markInsightsNudged(items));
   }
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') checkReminders();
+    if (document.visibilityState === 'visible') { checkReminders(); checkInsightNudges(); }
+  });
+
+  /* ---------- install prompt (re-offered, not one-shot) ---------- */
+  /* Chrome/Edge fire beforeinstallprompt again on later visits as long as the
+     app isn't installed — capturing it every time (instead of only once) is
+     what makes re-offering possible at all. Dismissing just snoozes the
+     banner; it comes back after INSTALL_SNOOZE_DAYS instead of never again. */
+  let deferredInstallPrompt = null;
+  const INSTALL_DISMISS_KEY = 'householdFinance.installDismissedAt';
+  const INSTALL_SNOOZE_DAYS = 14;
+  const isStandalone = () =>
+    window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  function showInstallBanner() {
+    const root = document.getElementById('install-banner-root');
+    if (!root || !deferredInstallPrompt || isStandalone()) return;
+    let dismissedAt = 0;
+    try { dismissedAt = +localStorage.getItem(INSTALL_DISMISS_KEY) || 0; } catch (e) { /* private mode */ }
+    if (dismissedAt && (Date.now() - dismissedAt) / 86400000 < INSTALL_SNOOZE_DAYS) return;
+    root.innerHTML = `
+      <div class="install-banner-inner">
+        <div class="callout install-banner">
+          <span>📲 Install Household Finance for one-tap access and offline use.</span>
+          <div class="btn-row" style="margin:0">
+            <button class="btn gold sm" id="install-go">Install</button>
+            <button class="btn ghost sm" id="install-dismiss">Not now</button>
+          </div>
+        </div>
+      </div>`;
+    root.querySelector('#install-go').addEventListener('click', async () => {
+      root.innerHTML = '';
+      if (!deferredInstallPrompt) return;
+      const prompt = deferredInstallPrompt;
+      deferredInstallPrompt = null;
+      prompt.prompt();
+      await prompt.userChoice;
+    });
+    root.querySelector('#install-dismiss').addEventListener('click', () => {
+      try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch (e) { /* private mode */ }
+      root.innerHTML = '';
+    });
+  }
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    showInstallBanner();
+  });
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    const root = document.getElementById('install-banner-root');
+    if (root) root.innerHTML = '';
+    toast('Installed — find it on your home screen');
   });
 
   window.App = {
     render, toast, modal, confirmDialog, download, esc, options, routeParams, clearRouteParams, go,
-    exportTransactionsCSV, exportBanner, openSearch, checkReminders
+    exportTransactionsCSV, exportBanner, openSearch, checkReminders, checkInsightNudges
   };
 
   ['search-btn-mobile', 'search-btn-desktop'].forEach(id => {
@@ -264,6 +346,7 @@
     const autoPosted = Store.autoPostDueBills();
     render();
     checkReminders();
+    checkInsightNudges();
     if (window.Tour) Tour.maybeAutoStart();
     if (autoPosted) toast(autoPosted + ' cash-pay bill' + (autoPosted === 1 ? '' : 's') + ' auto-posted for this month');
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
