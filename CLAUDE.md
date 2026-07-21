@@ -46,13 +46,22 @@ which before doing anything else:
     member roster — Cross-Household- has no equivalent file, since it uses a
     fixed two-person `WHO` array instead; see that repo's own CLAUDE.md)
   - `03-budget.js` — budget/income/goals/house/wedding/insights, safe-to-spend
-  - `04-paycycles.js` — paydays & which paycheck funds a bill
+  - `04-paycycles.js` — paydays & which paycheck funds a bill (this repo has
+    no rule-based paycheck-*allocation* engine or Direct Deposit screen — see
+    below)
   - `05-transactions.js` — CSV import/export & merchant intelligence
   - `06-calendar.js` — bill calendar, reminders & month-end close
   - `07-networth.js` — net worth, debt payoff, forecast, import batches
   - `99-export.js` — assembles `window.Store` and boots via `load()`
 - `js/views/*.js` — one file per screen (`budget.js`, `dashboard.js`, etc.),
   each exporting `Views.<name>(root)` that renders into the router's outlet.
+  **No `paycheck.js` or `report.js` here** — Direct Deposit (rule-based
+  paycheck allocation) and Monthly Report are intentionally Cross-Household-
+  -only. Porting Direct Deposit isn't a copy-paste: its HYSA/Roth math is
+  derived from a fixed two-person pair there, and would need re-deriving for
+  this repo's dynamic member list (arbitrary N members) to work correctly.
+  Treat porting either screen as its own scoped feature request, not
+  something to bundle into an unrelated change.
 - `js/features.js` — a single registry (`window.Features`) of every
   user-facing screen: `{ id, route, icon, title, blurb }`. It's the shared
   source of truth behind both onboarding surfaces below — see "Executive
