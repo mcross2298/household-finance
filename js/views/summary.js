@@ -10,18 +10,18 @@
   Views.summary = function (root) {
     const S = Store;
     const month = S.thisMonth();
-    const sum = S.monthSummary(month);
-    const sts = S.safeToSpend(month);
-    const surplus = S.surplus();
-    const rate = S.savingsRate();
-    const progress = S.goalsProgress();
-    const nw = S.netWorthSeries();
-    const nwLatest = nw.length ? nw[nw.length - 1] : null;
-    const nwPrev = nw.length > 1 ? nw[nw.length - 2] : null;
-    const insights = S.insights();
-    const wedding = S.weddingRemaining();
-    const debts = S.data.accounts.filter(a => a.kind === 'debt');
-    const debtTotal = debts.reduce((s, a) => s + (S.latestBalance(a.id) || 0), 0);
+    const snap = S.householdSnapshot(month);
+    const sum = snap.summary;
+    const sts = snap.safeToSpend;
+    const surplus = snap.surplus;
+    const rate = snap.savingsRate;
+    const progress = snap.goals;
+    const nwLatest = snap.netWorth.latest;
+    const nwPrev = snap.netWorth.prev;
+    const insights = snap.insights;
+    const wedding = snap.wedding.remaining;
+    const debtCount = snap.debt.accounts;
+    const debtTotal = snap.debt.total;
 
     root.innerHTML = `
       <div class="page summary-page">
@@ -86,9 +86,9 @@
         <div class="two-col">
           <section class="card">
             <div class="card-head"><h2>Debt</h2></div>
-            ${debts.length ? `<table class="table plain"><tbody>
+            ${debtCount ? `<table class="table plain"><tbody>
               <tr><td>Total balance</td><td class="num">${S.fmt$(debtTotal, 0)}</td></tr>
-              <tr><td>Open accounts</td><td class="num">${debts.length}</td></tr>
+              <tr><td>Open accounts</td><td class="num">${debtCount}</td></tr>
             </tbody></table><div class="card-foot"><a class="card-link" href="#/debt">Payoff plan →</a></div>`
               : '<p class="empty">No debt accounts on file.</p>'}
           </section>

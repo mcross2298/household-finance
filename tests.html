@@ -136,6 +136,21 @@
         S.data.budget.filter(b => b.type === 'Fixed' && b.dueDay).reduce((s, b) => s + b.monthly, 0)),
       JSON.stringify(allocations));
 
+    /* household snapshot selector (Dashboard / Summary / Report read from one source) */
+    const snap = S.householdSnapshot(S.thisMonth());
+    const sumNow = S.monthSummary(S.thisMonth());
+    t('snapshot.summary matches monthSummary', near(snap.summary.spent, sumNow.spent) && near(snap.summary.budget, sumNow.budget), JSON.stringify(snap.summary));
+    t('snapshot surplus & savingsRate match Store', near(snap.surplus, S.surplus()) && near(snap.savingsRate, S.savingsRate()));
+    t('snapshot.netWorth.latest is the last series point', (() => {
+      const nw = S.netWorthSeries();
+      const last = nw.length ? nw[nw.length - 1] : null;
+      if (!snap.netWorth.latest || !last) return snap.netWorth.latest === last;
+      return near(snap.netWorth.latest.net, last.net) && snap.netWorth.latest.ym === last.ym;
+    })());
+    t('snapshot.debt.total sums debt balances', near(snap.debt.total,
+      S.data.accounts.filter(a => a.kind === 'debt').reduce((s, a) => s + (S.latestBalance(a.id) || 0), 0)));
+    t('snapshot.insights (lazy) equals insights()', snap.insights.length === S.insights().length);
+
     // Note: Cross-Household-'s harness also checks integrityCheck() (seed
     // passes, bad rows get caught) — that function doesn't exist in this
     // repo yet (a separate, older hardening gap, not part of this port), so

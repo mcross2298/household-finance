@@ -37,19 +37,20 @@
     const S = Store;
     const month = selectedMonth || S.thisMonth();
     const isCurrent = month === S.thisMonth();
-    const sts = S.safeToSpend(month);
+    const snap = S.householdSnapshot(month);
+    const sts = snap.safeToSpend;
     const pace = S.monthPace(month);
     const budget = S.budgetTotal();
     const income = S.incomeTotal();
-    const surplus = S.surplus();
-    const rate = S.savingsRate();
+    const surplus = snap.surplus;
+    const rate = snap.savingsRate;
     const houseGoal = S.data.goals.find(g => g.isHouse);
     const housePct = houseGoal && houseGoal.target > 0 ? houseGoal.saved / houseGoal.target : 0;
-    const wedding = S.weddingRemaining();
+    const wedding = snap.wedding.remaining;
     const months = S.monthsWithData();
     const spent = S.txInMonth(month).reduce((s, t) => s + (+t.amount || 0), 0);
-    const progress = S.goalsProgress();
-    const insights = S.insights();
+    const progress = snap.goals;
+    const insights = snap.insights;
     const dueSoon = isCurrent ? S.dueSoonItems(3) : [];
 
     const layout = loadLayout();
