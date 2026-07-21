@@ -5,6 +5,10 @@ on:
     branches: ['**']
   pull_request:
 
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 # The app has no build step and no committed package.json — Playwright is
 # installed ad hoc here purely to drive tests.html in a headless browser.
 jobs:
@@ -22,3 +26,13 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run money-math tests
         run: node scripts/run-tests.mjs
+
+  doc-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check CSV/category contract against js/store/00-state.js
+        run: node scripts/check-doc-drift.mjs

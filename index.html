@@ -74,7 +74,9 @@
         <a href="#/home" data-route="home"><span class="nav-ico" data-icon="home"></span><span>Home</span></a>
         <a href="#/transactions" data-route="transactions"><span class="nav-ico" data-icon="list"></span><span>Activity</span></a>
         <a href="#/import" data-route="import" class="nav-import"><span class="nav-ico big" data-icon="upload"></span><span>Import</span></a>
-        <a href="#/plan" data-route="plan"><span class="nav-ico" data-icon="stack"></span><span>Plan</span></a>
+        <!-- data-route="plan" is a leftover highlight key, not a real route: it keeps
+             this tab lit while browsing any planning screen (see app.js's active-nav check) -->
+        <a href="#/summary" data-route="plan"><span class="nav-ico" data-icon="compass"></span><span>Summary</span></a>
         <a href="#/backup" data-route="backup"><span class="nav-ico" data-icon="exchange"></span><span>Data</span></a>
       </nav>
     </div>
@@ -86,7 +88,15 @@
   <div id="modal-root"></div>
   <div id="toast-root"></div>
 
-  <script src="js/store.js"></script>
+  <script src="js/store/00-state.js"></script>
+  <script src="js/store/01-format.js"></script>
+  <script src="js/store/02-members.js"></script>
+  <script src="js/store/03-budget.js"></script>
+  <script src="js/store/04-paycycles.js"></script>
+  <script src="js/store/05-transactions.js"></script>
+  <script src="js/store/06-calendar.js"></script>
+  <script src="js/store/07-networth.js"></script>
+  <script src="js/store/99-export.js"></script>
   <script src="js/lock.js"></script>
   <script src="js/icons.js"></script>
   <script src="js/theme.js"></script>
@@ -105,7 +115,6 @@
   <script src="js/views/house.js"></script>
   <script src="js/views/invest.js"></script>
   <script src="js/views/wedding.js"></script>
-  <script src="js/views/plan.js"></script>
   <script src="js/views/backup.js"></script>
   <script src="js/tour.js"></script>
   <script src="js/app.js"></script>

@@ -4,7 +4,7 @@
 
   const TITLES = {
     home: 'Dashboard', summary: 'Executive Summary', transactions: 'Transactions', import: 'Import',
-    plan: 'Plan', budget: 'Budget', calendar: 'Bill Calendar', goals: 'Savings Goals',
+    budget: 'Budget', calendar: 'Bill Calendar', goals: 'Savings Goals',
     house: 'House Plan', invest: 'Investments', wedding: 'Wedding Payoff',
     networth: 'Net Worth', debt: 'Debt Payoff Plan', forecast: 'Forecast', backup: 'Export & Backup'
   };
@@ -38,7 +38,7 @@
     document.title = TITLES[r] + " — Household Finance";
     document.querySelectorAll('[data-route]').forEach(a => {
       const active = a.dataset.route === r ||
-        (a.dataset.route === 'plan' && ['budget', 'calendar', 'goals', 'house', 'invest', 'wedding', 'networth', 'debt', 'forecast'].includes(r));
+        (a.dataset.route === 'plan' && ['summary', 'budget', 'calendar', 'goals', 'house', 'invest', 'wedding', 'networth', 'debt', 'forecast'].includes(r));
       a.classList.toggle('active', active);
     });
     if (resetScroll) { view.scrollTop = 0; window.scrollTo(0, 0); }
