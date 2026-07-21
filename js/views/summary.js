@@ -1,8 +1,11 @@
-/* Executive Summary — a one-page financial snapshot plus a tour of what the
-   app itself can do. Two audiences, one screen: the numbers section answers
-   "where do we stand right now"; the features section (rendered from
-   Features in js/features.js) answers "what can this app do" — handy to skim
-   before a budget conversation, or to hand to someone new to the app. */
+/* Executive Summary — a one-page financial snapshot, a jump-off point to
+   every planning screen, and a tour of what the app itself can do. Three
+   jobs, one screen: the numbers section answers "where do we stand right
+   now"; the Plan section (folded in from the former standalone Plan hub —
+   see CLAUDE.md) answers "where do I go to work on X"; the features section
+   (rendered from Features in js/features.js) answers "what can this app do"
+   — handy to skim before a budget conversation, or to hand to someone new to
+   the app. */
 (function () {
   'use strict';
   window.Views = window.Views || {};
@@ -22,6 +25,7 @@
     const wedding = snap.wedding.remaining;
     const debtCount = snap.debt.accounts;
     const debtTotal = snap.debt.total;
+    const planTiles = renderPlanTiles(S);
 
     root.innerHTML = `
       <div class="page summary-page">
@@ -44,6 +48,11 @@
             ${kpi('Savings Rate', S.fmtPct(rate), 'of take-home', rate < 0 ? 'bad' : '', '#/budget')}
             ${kpi('Safe to Spend', S.fmt$(sts.safe, 0), 'rest of ' + S.fmtMonth(month), sts.safe < 0 ? 'bad' : '', `#/transactions?month=${month}`)}
           </div>
+        </section>
+
+        <section class="summary-plan">
+          <h2>Plan</h2>
+          <div class="plan-grid">${planTiles}</div>
         </section>
 
         <div class="two-col">
@@ -135,5 +144,84 @@
       <div class="kpi-value">${value}</div>
       <div class="kpi-sub">${sub}</div>
     </${tag}>`;
+  }
+
+  /* Ported from the former standalone Plan hub (js/views/plan.js, removed —
+     see CLAUDE.md). Tiles are generated from the Features registry so titles,
+     icons and which screens exist stay single-sourced with the Quick Tour and
+     the features grid below. STATUS owns the two live data lines per tile —
+     and, by having an entry for a route, declares that route belongs here. */
+  function renderPlanTiles(S) {
+    const goals = S.data.goals;
+    const saved = goals.reduce((s, g) => s + (+g.saved || 0), 0);
+    const target = goals.reduce((s, g) => s + (+g.target || 0), 0);
+    const houseGoal = goals.find(g => g.isHouse);
+    const scA = S.data.house.scenarios[0] ? S.houseScenario(S.data.house.scenarios[0]) : null;
+    const rothLine = S.members().map(n => App.esc(n) + ' ' + S.fmt$(S.rothMeta(n).ytd, 0)).join(' · ');
+    const wedding = S.weddingRemaining();
+
+    const calLine = () => {
+      const sched = S.monthSchedule(S.thisMonth());
+      const soon = sched.filter(i => i.status === 'soon');
+      const overdue = sched.filter(i => i.status === 'overdue');
+      if (overdue.length) return overdue.length + ' overdue';
+      if (soon.length) return soon.length + ' due this week · ' + S.fmt$(soon.reduce((s, i) => s + i.amount, 0), 0);
+      return sched.filter(i => i.posted).length + ' of ' + sched.length + ' posted this month';
+    };
+    const nwLine = () => {
+      const series = S.netWorthSeries();
+      if (!series.length) return 'Take your first balance snapshot';
+      const last = series[series.length - 1];
+      return S.fmt$(last.net, 0) + ' · ' + S.fmtMonth(last.ym);
+    };
+    const debtLine = () => {
+      const owed = S.data.accounts.filter(a => a.kind === 'debt' && (S.latestBalance(a.id) || 0) > 0);
+      if (!owed.length) return 'All paid off 🎉';
+      const conservative = S.debtStrategiesSummary()[0];
+      return owed.length + ' debt' + (owed.length > 1 ? 's' : '') +
+        (conservative.months != null ? ' · ' + conservative.months + ' mo at current payments' : '');
+    };
+    const fcLine = () => {
+      if (!Object.keys(S.data.snapshots).length) return 'Needs a balance snapshot';
+      const fc = S.forecast(12);
+      const bad = fc.months.find(m => m.tone === 'bad');
+      const warn = fc.months.find(m => m.tone === 'warn');
+      return bad ? 'Negative in ' + S.fmtMonth(bad.ym)
+        : warn ? 'Tight in ' + S.fmtMonth(warn.ym)
+        : '12 months clear · ' + S.fmt$(fc.months[fc.months.length - 1].balance, 0) + ' projected';
+    };
+
+    /* route → [line1, line2]. An entry here also opts the route onto the hub. */
+    const STATUS = {
+      budget: () => [S.fmt$(S.budgetTotal(), 0) + '/mo · surplus ' + S.fmt$(S.surplus(), 0), 'Recurring expenses & income'],
+      calendar: () => [calLine(), 'Due dates, reminders & month-end close'],
+      goals: () => [S.fmt$(saved, 0) + ' saved of ' + S.fmt$(target, 0), goals.length + ' goals'],
+      house: () => [houseGoal ? S.fmt$(houseGoal.saved, 0) + ' toward down payment' : 'Set a house goal',
+        scA ? 'Scenario A PITI ' + S.fmt$(scA.piti, 0) + '/mo' : ''],
+      invest: () => [rothLine ? 'Roth: ' + rothLine : 'Add a member to track Roth',
+        'HYSA deposit ' + S.fmt$(S.data.invest.hysa.deposit, 0) + '/mo'],
+      networth: () => [nwLine(), 'Accounts, snapshots & debt payoff'],
+      debt: () => [debtLine(), 'Conservative / Base / Aggressive strategies'],
+      forecast: () => [fcLine(), '12-month cash-flow projection'],
+      wedding: () => [wedding > 0 ? S.fmt$(wedding, 0) + ' remaining' : 'All settled 🎉', 'through ' + S.fmtDate(S.data.wedding.date)]
+    };
+
+    const tile = (href, icon, title, line1, line2) => `
+      <a class="card plan-tile" href="${href}">
+        <div class="plan-ico" aria-hidden="true">${icon}</div>
+        <div class="plan-body">
+          <h3>${App.esc(title)}</h3>
+          <div class="plan-line">${line1}</div>
+          ${line2 ? `<div class="plan-sub">${line2}</div>` : ''}
+        </div>
+        <div class="plan-arrow" aria-hidden="true">›</div>
+      </a>`;
+
+    return (window.Features || [])
+      .filter(f => STATUS[f.route])
+      .map(f => {
+        const [line1, line2] = STATUS[f.route]();
+        return tile('#/' + f.route, (window.Icons && Icons[f.icon]) || '', f.title, line1, line2);
+      }).join('');
   }
 })();

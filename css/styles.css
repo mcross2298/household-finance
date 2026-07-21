@@ -459,7 +459,8 @@ input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--navy); }
 .sc-flag { font-size: .74rem; color: var(--bad); font-weight: 700; margin-bottom: 4px; }
 .sc-detail { margin-top: 10px; }
 
-/* ---------- plan hub ---------- */
+/* ---------- plan hub (folded into the Executive Summary) ---------- */
+.summary-plan h2 { margin-bottom: 12px; }
 .plan-grid { display: grid; gap: 12px; }
 @media (min-width: 720px) { .plan-grid { grid-template-columns: 1fr 1fr; } }
 .plan-tile { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--ink); min-height: 84px; }

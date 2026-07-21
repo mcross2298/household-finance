@@ -20,8 +20,8 @@ which before doing anything else:
    If they want it hosted at a private URL instead of run locally, that's
    `SETUP.md` — a zero-experience GitHub + Cloudflare walkthrough (also
    published as a standalone page; check the repo's README for the link).
-   **Never hand-edit `seed()` in `js/store.js` to insert someone's real
-   financial data** — that would put real numbers in a public repo's git
+   **Never hand-edit `seed()` in `js/store/00-state.js` to insert someone's
+   real financial data** — that would put real numbers in a public repo's git
    history forever. The in-app flow above is the only place real data belongs.
 
 2. **"Help me customize/extend the app itself."** That's normal code work —
@@ -29,11 +29,28 @@ which before doing anything else:
 
 ## Architecture
 
-- `index.html` — app shell, nav, script tags (load order matters: `store.js`
+- `index.html` — app shell, nav, script tags (load order matters: `js/store/*`
   before any `views/*.js`, `app.js` last — it boots the router).
-- `js/store.js` — the entire data layer. All state lives in one `data` object,
-  persisted to `localStorage` as JSON on every `Store.save()`. Read this file
-  first; almost everything else just calls into it.
+- `js/store/` — the entire data layer, split into domain files that load as
+  ordered sibling `<script>` tags. Because classic (non-module) `<script>`
+  tags in one document share a single top-level scope, every function in
+  every `store/*.js` file can call any other by its bare name — same as when
+  this was one file, just organized. All state lives in one `data` object
+  (owned by `00-state.js`), persisted to `localStorage` as JSON on every
+  `Store.save()`. `99-export.js` must load last: it assembles `window.Store`
+  and calls `load()`. Read `00-state.js` first; almost everything else just
+  calls into it. Files, in load order:
+  - `00-state.js` — seed data, load/save/migrate, backup housekeeping
+  - `01-format.js` — money/date/percent formatting, month helpers
+  - `02-members.js` — WHO, add/rename/remove member (this repo's dynamic
+    member roster — Cross-Household- has no equivalent file, since it uses a
+    fixed two-person `WHO` array instead; see that repo's own CLAUDE.md)
+  - `03-budget.js` — budget/income/goals/house/wedding/insights, safe-to-spend
+  - `04-paycycles.js` — paydays & which paycheck funds a bill
+  - `05-transactions.js` — CSV import/export & merchant intelligence
+  - `06-calendar.js` — bill calendar, reminders & month-end close
+  - `07-networth.js` — net worth, debt payoff, forecast, import batches
+  - `99-export.js` — assembles `window.Store` and boots via `load()`
 - `js/views/*.js` — one file per screen (`budget.js`, `dashboard.js`, etc.),
   each exporting `Views.<name>(root)` that renders into the router's outlet.
 - `js/features.js` — a single registry (`window.Features`) of every
@@ -87,7 +104,8 @@ UI/UX-visible change without checking whether either surface needs a touch.
 - `incomes` and `invest.roth` are objects keyed by member name (not a fixed
   `mike`/`bri` pair) — `Store.incomeTotal()` and `Store.rothMeta(name)` iterate
   `data.members`.
-- Schema changes go through `migrate()` in `store.js`, gated on `data.version`.
+- Schema changes go through `migrate()` in `js/store/00-state.js`, gated on
+  `data.version`.
   Each step must be additive so a backup from any older version upgrades in
   place without data loss — see the v4→v5 step for the pattern (it renamed the
   old `{mike, bri}` income/Roth keys to member names).
@@ -114,10 +132,16 @@ UI/UX-visible change without checking whether either surface needs a touch.
   19-category list) is treated as a stable contract — changing it breaks
   anyone piping the export into their own spreadsheet. Don't change it in
   passing.
-- After changing anything in `store.js` or a view, actually load the app (a
-  local server or opening `index.html`) and click through the affected
-  screen(s) — this app has no automated test suite, so manual verification in
-  a real browser is the only check.
+- After changing anything under `js/store/` or a view, actually load the app
+  (a local server or opening `index.html`) and click through the affected
+  screen(s); for changes touching money math, also open `tests.html` and
+  confirm all assertions still pass — the same suite runs headlessly in CI
+  (`.github/workflows/tests.yml`, via `scripts/run-tests.mjs`) on every push
+  and PR, so a broken assertion is a red check, not just a missed manual step.
+  That workflow also runs `scripts/check-doc-drift.mjs`, which fails CI if a
+  doc's CSV header or category list has drifted from `js/store/00-state.js`'s
+  `CSV_HEADER`/`CATEGORIES` — the actual single source of truth for that
+  contract.
 
 ## Docs in this repo
 

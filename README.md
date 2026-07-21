@@ -123,9 +123,10 @@ than something this template takes on by default.
 ```
 index.html          app shell + navigation
 css/styles.css      theme (light + dark)
-js/store.js         data layer: schema+migrations, demo seed, localStorage, CSV,
-                    derived math, insights, merchant rules, dedupe, bill matching,
-                    household member roster
+js/store/*.js       data layer, split by domain (load order matters — see CLAUDE.md):
+                    schema+migrations, demo seed, localStorage, CSV, derived math,
+                    insights, merchant rules, dedupe, bill matching, household
+                    member roster
 js/icons.js         inline SVG icon set
 js/theme.js         light/dark toggle
 js/charts.js        dependency-free SVG charts (bars, donut, trend, rings)
@@ -141,5 +142,5 @@ wrangler.jsonc      optional Cloudflare Workers static-asset deploy config
 - Rename the app: search the repo for **Household Finance** (title, `manifest.json`,
   sidebar in `index.html`) and swap in your own name.
 - Replace the demo: **Start fresh** in-app, or edit the `seed()` function in
-  `js/store.js` if you want a different starting sample.
-- Categories and the CSV schema live at the top of `js/store.js`.
+  `js/store/00-state.js` if you want a different starting sample.
+- Categories and the CSV schema live at the top of `js/store/00-state.js`.
