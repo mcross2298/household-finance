@@ -1,4 +1,8 @@
-/* Plan hub — mobile landing for the planning sections. */
+/* Plan hub — mobile landing for the planning sections. Tiles are generated
+   from the Features registry (js/features.js) so titles, icons and which
+   screens exist stay single-sourced with the Executive Summary and Quick Tour.
+   STATUS below owns the two live data lines per tile — and, by having an entry
+   for a route, declares that route belongs on the Plan hub. */
 (function () {
   'use strict';
   window.Views = window.Views || {};
@@ -21,7 +25,6 @@
       if (soon.length) return soon.length + ' due this week · ' + S.fmt$(soon.reduce((s, i) => s + i.amount, 0), 0);
       return sched.filter(i => i.posted).length + ' of ' + sched.length + ' posted this month';
     };
-
     const nwLine = () => {
       const series = S.netWorthSeries();
       if (!series.length) return 'Take your first balance snapshot';
@@ -45,41 +48,43 @@
         : '12 months clear · ' + S.fmt$(fc.months[fc.months.length - 1].balance, 0) + ' projected';
     };
 
+    /* route → [line1, line2]. An entry here also opts the route onto the hub. */
+    const STATUS = {
+      budget: () => [S.fmt$(S.budgetTotal(), 0) + '/mo · surplus ' + S.fmt$(S.surplus(), 0), 'Recurring expenses & income'],
+      calendar: () => [calLine(), 'Due dates, reminders & month-end close'],
+      goals: () => [S.fmt$(saved, 0) + ' saved of ' + S.fmt$(target, 0), goals.length + ' goals'],
+      house: () => [houseGoal ? S.fmt$(houseGoal.saved, 0) + ' toward down payment' : 'Set a house goal',
+        scA ? 'Scenario A PITI ' + S.fmt$(scA.piti, 0) + '/mo' : ''],
+      invest: () => [rothLine ? 'Roth: ' + rothLine : 'Add a member to track Roth',
+        'HYSA deposit ' + S.fmt$(S.data.invest.hysa.deposit, 0) + '/mo'],
+      networth: () => [nwLine(), 'Accounts, snapshots & debt payoff'],
+      debt: () => [debtLine(), 'Conservative / Base / Aggressive strategies'],
+      forecast: () => [fcLine(), '12-month cash-flow projection'],
+      wedding: () => [wedding > 0 ? S.fmt$(wedding, 0) + ' remaining' : 'All settled 🎉', 'through ' + S.fmtDate(S.data.wedding.date)]
+    };
+
     const tile = (href, icon, title, line1, line2) => `
       <a class="card plan-tile" href="${href}">
         <div class="plan-ico" aria-hidden="true">${icon}</div>
         <div class="plan-body">
-          <h2>${title}</h2>
+          <h2>${App.esc(title)}</h2>
           <div class="plan-line">${line1}</div>
           ${line2 ? `<div class="plan-sub">${line2}</div>` : ''}
         </div>
         <div class="plan-arrow" aria-hidden="true">›</div>
       </a>`;
 
+    const tiles = (window.Features || [])
+      .filter(f => STATUS[f.route])
+      .map(f => {
+        const [line1, line2] = STATUS[f.route]();
+        return tile('#/' + f.route, (window.Icons && Icons[f.icon]) || '', f.title, line1, line2);
+      }).join('');
+
     root.innerHTML = `
       <div class="page">
         <div class="page-head"><h1>Plan</h1></div>
-        <div class="plan-grid">
-          ${tile('#/budget', Icons.grid, 'Budget',
-            S.fmt$(S.budgetTotal(), 0) + '/mo · surplus ' + S.fmt$(S.surplus(), 0),
-            'Recurring expenses & income')}
-          ${tile('#/calendar', Icons.calendar, 'Bill Calendar', calLine(), 'Due dates, reminders & month-end close')}
-          ${tile('#/goals', Icons.target, 'Savings Goals',
-            S.fmt$(saved, 0) + ' saved of ' + S.fmt$(target, 0),
-            goals.length + ' goals')}
-          ${tile('#/house', Icons.house, 'House Plan',
-            houseGoal ? S.fmt$(houseGoal.saved, 0) + ' toward down payment' : 'Set a house goal',
-            scA ? 'Scenario A PITI ' + S.fmt$(scA.piti, 0) + '/mo' : '')}
-          ${tile('#/invest', Icons.trend, 'Investments',
-            rothLine ? 'Roth: ' + rothLine : 'Add a member to track Roth',
-            'HYSA deposit ' + S.fmt$(S.data.invest.hysa.deposit, 0) + '/mo')}
-          ${tile('#/networth', Icons.bank, 'Net Worth', nwLine(), 'Accounts, snapshots & debt payoff')}
-          ${tile('#/debt', Icons.debt, 'Debt Payoff Plan', debtLine(), 'Conservative / Base / Aggressive strategies')}
-          ${tile('#/forecast', Icons.trend, 'Forecast', fcLine(), '12-month cash-flow projection')}
-          ${tile('#/wedding', Icons.sparkle, 'Wedding Payoff',
-            wedding > 0 ? S.fmt$(wedding, 0) + ' remaining' : 'All settled 🎉',
-            'through ' + S.fmtDate(S.data.wedding.date))}
-        </div>
+        <div class="plan-grid">${tiles}</div>
       </div>`;
   };
 })();

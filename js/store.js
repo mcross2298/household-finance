@@ -632,6 +632,45 @@
     return out.slice(0, 8);
   }
 
+  /* One current-state snapshot the Dashboard, Executive Summary and Monthly
+     Report all read from, instead of each recomputing the same figures three
+     ways. Month-parameterized (defaults to the current month) so the historical
+     Report can ask for a past month. `insights` is a memoized lazy getter — the
+     Report never reads it, so that heavier computation isn't paid for there. */
+  function householdSnapshot(ym) {
+    ym = ym || thisMonth();
+    const nw = netWorthSeries();
+    const debts = data.accounts.filter(a => a.kind === 'debt');
+    const snap = {
+      month: ym,
+      summary: monthSummary(ym),
+      safeToSpend: safeToSpend(ym),
+      surplus: surplus(),
+      savingsRate: savingsRate(),
+      goals: goalsProgress(),
+      netWorth: {
+        series: nw,
+        latest: nw.length ? nw[nw.length - 1] : null,
+        prev: nw.length > 1 ? nw[nw.length - 2] : null
+      },
+      wedding: {
+        remaining: weddingRemaining(),
+        date: data.wedding.date,
+        vendorCount: data.wedding.vendors.length
+      },
+      debt: {
+        accounts: debts.length,
+        total: debts.reduce((s, a) => s + (latestBalance(a.id) || 0), 0)
+      }
+    };
+    let cachedInsights;
+    Object.defineProperty(snap, 'insights', {
+      enumerable: true, configurable: true,
+      get() { return cachedInsights || (cachedInsights = insights()); }
+    });
+    return snap;
+  }
+
   /* ---------- answers at a glance ---------- */
 
   function daysInMonth(ym) {
@@ -1540,7 +1579,7 @@
     txInMonth, spendByCategory, spendByWho, spendByDay, monthsWithData,
     goalMeta, houseScenario, weddingRemaining, rothMeta, hysaProjection,
     paydaysInMonth, paydaysInMonthAll, fundingPaycheck, paycheckAllocations,
-    goalsProgress, insights,
+    goalsProgress, insights, householdSnapshot,
     saveForecastScenario, deleteForecastScenario,
     parseCSV, exportCSV, csvEscape,
     monthPace, safeToSpend, avgSpendByCategory, categoryTrends, priceCreeps, unusualTx,
