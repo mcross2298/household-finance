@@ -122,7 +122,7 @@
         if (n == null) return;
         S.data.payCycles[n] = S.data.payCycles[n] || { frequency: 'biweekly', anchor: null };
         S.data.payCycles[n].anchor = e.target.value || null;
-        S.save(); App.render({ resetScroll: false });
+        S.save(); App.render();
       }));
     root.querySelectorAll('input.member-name').forEach(inp =>
       inp.addEventListener('change', e => {
@@ -145,7 +145,7 @@
     root.querySelector('#m-add').addEventListener('click', addMemberModal);
     root.querySelector('#streaks-toggle').addEventListener('change', e => {
       S.data.streaksEnabled = e.target.checked;
-      S.save(); App.render({ resetScroll: false });
+      S.save(); App.render();
     });
     root.querySelector('#b-add').addEventListener('click', () => editModal(null));
     root.querySelectorAll('.budget-row').forEach(li =>

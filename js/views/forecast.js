@@ -141,22 +141,22 @@
 
     const wiGoalSel = root.querySelector('#wi-goal');
     if (wiGoalSel) wiGoalSel.addEventListener('change', () => {
-      whatIfGoal = wiGoalSel.value; whatIfMonthly = null; App.render({ resetScroll: false });
+      whatIfGoal = wiGoalSel.value; whatIfMonthly = null; App.render();
     });
     const wiSlider = root.querySelector('#wi-slider');
     if (wiSlider) wiSlider.addEventListener('change', () => {
-      whatIfGoal = goal.id; whatIfMonthly = +wiSlider.value; App.render({ resetScroll: false });
+      whatIfGoal = goal.id; whatIfMonthly = +wiSlider.value; App.render();
     });
     const wiApply = root.querySelector('#wi-apply');
     if (wiApply) wiApply.addEventListener('click', () => {
       goal.monthly = trial; S.save();
       whatIfMonthly = null;
-      App.render({ resetScroll: false });
+      App.render();
       App.toast(App.esc(goal.name) + ' → ' + S.fmt$(trial, 0) + '/mo');
     });
     const wiReset = root.querySelector('#wi-reset');
     if (wiReset) wiReset.addEventListener('click', () => {
-      whatIfMonthly = null; App.render({ resetScroll: false });
+      whatIfMonthly = null; App.render();
     });
     const wiSaveScenario = root.querySelector('#wi-save-scenario');
     if (wiSaveScenario) wiSaveScenario.addEventListener('click', () => saveScenarioModal(goal, trial));
@@ -172,7 +172,7 @@
       btn.addEventListener('click', () => {
         App.confirmDialog('Delete scenario', 'Remove this saved scenario? The goal itself is unaffected.', 'Delete', () => {
           S.deleteForecastScenario(btn.dataset.delScenario);
-          App.render({ resetScroll: false });
+          App.render();
           App.toast('Deleted');
         });
       }));
@@ -191,7 +191,7 @@
       const name = input.value.trim();
       if (!name) return App.toast('Name the scenario', 'warn');
       Store.saveForecastScenario(name, goal.id, trial);
-      m.close(); App.render({ resetScroll: false });
+      m.close(); App.render();
       App.toast('Scenario saved');
     });
   }

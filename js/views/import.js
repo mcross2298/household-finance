@@ -174,7 +174,7 @@
     const exact = Store.CSV_HEADER.every((h, i) => (header[i] || '').toLowerCase() === h.toLowerCase());
     if (exact || (map.date >= 0 && map.amount >= 0 && map.description >= 0)) {
       buildPending(rows.slice(1), map);
-      return App.render();
+      return App.render({ resetScroll: true });
     }
     mappingModal(header, rows, map);
   }
@@ -197,7 +197,7 @@
       m.el.querySelectorAll('[data-map]').forEach(s => chosen[s.dataset.map] = +s.value);
       for (const f of required) if (chosen[f] < 0) return App.toast('Map the ' + f + ' column', 'warn');
       buildPending(rows.slice(1), chosen);
-      m.close(); App.render();
+      m.close(); App.render({ resetScroll: true });
     });
   }
 
@@ -288,7 +288,7 @@
       pending = rows;
       whoTouched = false;
       applyIntelligence(true);
-      App.render();
+      App.render({ resetScroll: true });
     } catch (e) {
       App.toast('Could not read that PDF', 'warn');
     }
@@ -425,7 +425,7 @@
     root.querySelector('#rev-who').addEventListener('change', e => {
       if (e.target.value) { pending.forEach(p => p.who = e.target.value); whoTouched = true; App.render(); }
     });
-    root.querySelector('#rev-cancel').addEventListener('click', () => { pending = null; App.render(); });
+    root.querySelector('#rev-cancel').addEventListener('click', () => { pending = null; App.render({ resetScroll: true }); });
     root.querySelector('#rev-commit').addEventListener('click', () => {
       const good = pending.filter(p => p.include && p.date && p.amount !== '' && p.category);
       if (!good.length) return App.toast('Nothing valid selected', 'warn');

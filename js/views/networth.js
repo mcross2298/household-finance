@@ -116,13 +116,13 @@
     root.querySelectorAll('[data-extra]').forEach(sl => {
       sl.addEventListener('change', () => {
         extraPay[sl.dataset.extra] = +sl.value;
-        App.render({ resetScroll: false });
+        App.render();
       });
     });
     root.querySelectorAll('[data-refi]').forEach(sl => {
       sl.addEventListener('change', () => {
         refiRate[sl.dataset.refi] = +sl.value;
-        App.render({ resetScroll: false });
+        App.render();
       });
     });
   };

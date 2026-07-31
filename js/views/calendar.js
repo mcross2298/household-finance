@@ -178,7 +178,7 @@
       notes: 'Marked paid from a notification'
     });
     S.touchTransactions(); S.save();
-    App.render({ resetScroll: false });
+    App.render();
     App.toast('Marked "' + b.name + '" paid');
   }
 
@@ -397,7 +397,7 @@
       S.closeMonth(ym);
       m.close();
       summaryModal(ym);
-      App.render({ resetScroll: false });
+      App.render();
     });
   }
 

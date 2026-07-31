@@ -87,7 +87,7 @@
     const rollupSlider = root.querySelector('#rollup-extra');
     if (rollupSlider) rollupSlider.addEventListener('change', () => {
       rollupExtra = +rollupSlider.value;
-      App.render({ resetScroll: false });
+      App.render();
     });
   };
 
