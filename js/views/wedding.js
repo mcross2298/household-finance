@@ -15,7 +15,7 @@
       <div class="page">
         <div class="page-head">
           <h1>Wedding Payoff</h1>
-          <button class="btn gold" id="w-add">＋ Add vendor</button>
+          <button class="btn gold" id="w-add">${UI.icon("plus")}Add vendor</button>
         </div>
 
         <section class="card card-navy stat-band">

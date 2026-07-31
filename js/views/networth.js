@@ -79,12 +79,12 @@
           <section class="card">
             <div class="card-head"><h2>Assets</h2><span class="card-note">tap to edit</span></div>
             <ul class="acct-list">${assets.map(acctRow).join('')}</ul>
-            <div class="btn-row"><button class="btn gold" id="acct-add-asset">＋ Add asset</button></div>
+            <div class="btn-row"><button class="btn gold" id="acct-add-asset">${UI.icon("plus")}Add asset</button></div>
           </section>
           <section class="card">
             <div class="card-head"><h2>Debts</h2><span class="card-note">tap to edit</span></div>
             <ul class="acct-list">${debts.map(acctRow).join('')}</ul>
-            <div class="btn-row"><button class="btn gold" id="acct-add-debt">＋ Add debt</button></div>
+            <div class="btn-row"><button class="btn gold" id="acct-add-debt">${UI.icon("plus")}Add debt</button></div>
           </section>
         </div>
 

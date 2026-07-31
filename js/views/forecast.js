@@ -51,7 +51,7 @@
           <div class="btn-row">
             <button class="btn gold" id="wi-apply"${trial === +goal.monthly ? ' disabled' : ''}>Apply ${S.fmt$(trial, 0)}/mo</button>
             <button class="btn ghost" id="wi-reset"${trial === +goal.monthly ? ' disabled' : ''}>Reset</button>
-            <button class="btn ghost" id="wi-save-scenario">💾 Save as scenario</button>
+            <button class="btn ghost" id="wi-save-scenario">${UI.icon("save")}Save as scenario</button>
           </div>
           <p class="help">Nothing changes until you tap Apply — slide freely. Saving a scenario doesn't apply it either;
              it's a named bookmark of this goal + trial figure you can reload later.</p>
@@ -75,7 +75,7 @@
               </div>
               <div class="btn-row" style="margin:0">
                 <button class="btn ghost sm" data-load-scenario="${sc.id}">Load</button>
-                <button class="btn danger ghost sm" data-del-scenario="${sc.id}">✕</button>
+                <button class="btn danger ghost sm" data-del-scenario="${sc.id}" aria-label="Delete scenario">${UI.icon('close')}</button>
               </div>
             </li>`;
           }).join('')}
@@ -93,7 +93,7 @@
           ${UI.stat('Watch out', firstBad ? S.fmtMonth(firstBad.ym) : firstWarn ? S.fmtMonth(firstWarn.ym) : 'all clear')}
         </section>
 
-        ${hasSnapshots ? '' : `<div class="callout warn">📈 The forecast needs a starting point — take your first
+        ${hasSnapshots ? '' : `<div class="callout warn">The forecast needs a starting point — take your first
           <a href="#/networth">balance snapshot</a> and it lights up.</div>`}
 
         <section class="card">
@@ -106,7 +106,7 @@
         </section>
 
         <section class="card">
-          <div class="card-head"><h2>Planned one-offs</h2><button class="btn gold" id="pl-add">＋ Add one-off</button></div>
+          <div class="card-head"><h2>Planned one-offs</h2><button class="btn gold" id="pl-add">${UI.icon("plus")}Add one-off</button></div>
           ${S.data.planned.length ? `<ul class="acct-list">
             ${S.data.planned.slice().sort((a, b) => a.month < b.month ? -1 : 1).map(p => `
               <li class="acct-row" data-planned="${p.id}" role="button" tabindex="0">

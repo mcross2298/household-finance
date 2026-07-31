@@ -32,7 +32,7 @@
       <div class="page">
         <div class="page-head">
           <h1>Transactions</h1>
-          <button class="btn gold" id="tx-add">＋ Add transaction</button>
+          <button class="btn gold" id="tx-add">${UI.icon("plus")}Add transaction</button>
         </div>
         ${App.exportBanner()}
         <div class="filter-row">

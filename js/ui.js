@@ -71,5 +71,9 @@
     </ul>`;
   };
 
-  window.UI = { stat, kpi, delta, scRow, empty, miniGoals, insightList };
+  /* Buttons and status text used two dozen distinct emoji/symbol codepoints
+     while a stroke icon set sat next to them covering nav only. One family. */
+  const icon = name => (window.Icons && Icons[name]) || '';
+
+  window.UI = { stat, kpi, delta, scRow, empty, miniGoals, insightList, icon };
 })();

@@ -57,7 +57,7 @@
     const cards = {
       insights: () => insightsSection(insights),
       thisMonth: () => `
-        <section class="card glance">
+        <section class="card">
           <div class="card-head">
             <h2>This Month</h2>
             <select id="dash-month" class="select" aria-label="Month">
@@ -157,7 +157,7 @@
         </section>
 
         <div class="btn-row" style="justify-content:flex-end;margin:0">
-          <button class="btn ghost sm" id="dash-customize">⚙ Customize</button>
+          <button class="btn ghost sm" id="dash-customize">${UI.icon("gear")}Customize</button>
         </div>
 
         ${layout.filter(c => !c.hidden).map(c => cards[c.id] ? cards[c.id]() : '').join('')}
@@ -195,7 +195,12 @@
       who => App.go('transactions', { month, who }));
 
     const chartTrend = root.querySelector('#chart-trend');
-    if (chartTrend) {
+    if (chartTrend && months.length < 3) {
+      const spent = m => S.txInMonth(m).reduce((a, t) => a + (+t.amount || 0), 0);
+      chartTrend.innerHTML = months.map(m =>
+        `<div class="sc-row"><span>${S.fmtMonth(m)}</span><b>${S.fmt$(spent(m), 0)}</b></div>`).join('') +
+        `<p class="help">The trend chart needs three months of history — ${3 - months.length} to go.</p>`;
+    } else if (chartTrend) {
       const trendMonths = months.slice(-12);
       Charts.trendColumns(chartTrend, trendMonths,
         trendMonths.map(m => S.txInMonth(m).reduce((s, t) => s + (+t.amount || 0), 0)), budget,
@@ -210,7 +215,7 @@
   };
 
   function insightsSection(insights) {
-    return `<section class="card insights-card glance">
+    return `<section class="card insights-card${insights.length ? ' glance' : ''}">
       <div class="card-head"><h2>Insights</h2></div>
       ${UI.insightList(insights, true)}
     </section>`;

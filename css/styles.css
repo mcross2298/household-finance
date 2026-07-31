@@ -351,7 +351,10 @@ a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 
 
 /* ---------- buttons / inputs ---------- */
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  /* .file-btn is a <label>, and the global label rule stacks its children in a
+     column — harmless while buttons were text-only, visible once they carry an
+     icon. Pin the direction here rather than at each call site. */
+  display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px;
   min-height: 48px; padding: 0 18px;
   background: var(--navy); color: #fff;
   border: none; border-radius: 10px; font-weight: 700; font-size: .92rem;
@@ -366,6 +369,13 @@ a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 
 .btn.danger.ghost { background: transparent; color: var(--bad-ink); border: 1.5px solid var(--bad-line); }
 .btn.sm { min-height: 44px; padding: 0 14px; font-size: .8rem; flex-shrink: 0; }
 .btn.slim { min-height: 44px; padding: 0 16px; font-size: .84rem; }
+.btn svg { width: 17px; height: 17px; flex-shrink: 0; }
+.btn.sm svg, .btn.slim svg { width: 15px; height: 15px; }
+.pill svg, .streak-badge svg, .cal-payday svg, .line-status svg, .close-step-mark svg, .health-list svg {
+  width: 13px; height: 13px; vertical-align: -2px;
+}
+.icon-btn svg { width: 17px; height: 17px; }
+.drop-ico svg { width: 34px; height: 34px; }
 .btn-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .btn-row.center { justify-content: center; }
 .icon-btn { background: none; border: none; font-size: 1.1rem; color: var(--ink-3); min-width: 44px; min-height: 44px; }

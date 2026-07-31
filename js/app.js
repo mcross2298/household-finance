@@ -110,7 +110,7 @@
         <div class="modal" role="dialog" aria-modal="true" aria-label="${title}">
           <div class="modal-head">
             <h3>${title}</h3>
-            <button class="icon-btn modal-x" aria-label="Close">✕</button>
+            <button class="icon-btn modal-x" aria-label="Close">${(window.UI && UI.icon('close')) || ''}</button>
           </div>
           <div class="modal-body">${bodyHTML}</div>
         </div>
@@ -155,7 +155,7 @@
   function exportBanner() {
     if (!Store.needsExport()) return '';
     return `<div class="callout warn export-banner">
-      <span>📤 You've made changes since your last CSV export.</span>
+      <span>You've made changes since your last CSV export.</span>
       <button class="btn ghost sm" id="export-banner-btn">Export CSV</button>
     </div>`;
   }
@@ -300,7 +300,7 @@
     root.innerHTML = `
       <div class="install-banner-inner">
         <div class="callout install-banner">
-          <span>📲 Install Household Finance for one-tap access and offline use.</span>
+          <span>Install Household Finance for one-tap access and offline use.</span>
           <div class="btn-row" style="margin:0">
             <button class="btn gold sm" id="install-go">Install</button>
             <button class="btn ghost sm" id="install-dismiss">Not now</button>

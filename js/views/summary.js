@@ -34,7 +34,7 @@
             <h1>Executive Summary</h1>
             <p class="page-sub">Where things stand right now, and what this app can do.</p>
           </div>
-          <button class="btn ghost sm" id="summary-print">🖨 Print</button>
+          <button class="btn ghost sm" id="summary-print">${UI.icon("print")}Print</button>
         </div>
 
         <section class="card card-navy summary-hero">
@@ -99,7 +99,7 @@
         <section class="card summary-features">
           <div class="card-head">
             <h2>What this app can do</h2>
-            <button class="btn ghost sm no-print" id="summary-tour">🧭 Take the Quick Tour</button>
+            <button class="btn ghost sm no-print" id="summary-tour">${UI.icon("compass")}Take the Quick Tour</button>
           </div>
           <div class="feature-grid">
             ${(window.Features || []).filter(f => f.id !== 'summary').map(f => `
