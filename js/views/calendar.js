@@ -202,7 +202,7 @@
       const iso = month + '-' + String(d).padStart(2, '0');
       const amt = dayTotals[iso] || 0;
       const intensity = amt > 0 ? Math.max(0.15, Math.min(1, amt / max)) : 0;
-      cells.push(`<a class="heatmap-cell${iso === today ? ' today' : ''}" href="#/transactions?month=${month}"
+      cells.push(`<a class="heatmap-cell${iso === today ? ' today' : ''}${intensity >= 0.45 ? ' hot' : ''}" href="#/transactions?month=${month}"
         style="--intensity:${intensity}" title="${S.fmtDate(iso)}: ${S.fmt$(amt, 0)}">
         <span class="heatmap-day">${d}</span>
       </a>`);
