@@ -32,7 +32,7 @@
       <div class="page">
         <div class="page-head">
           <h1>Transactions</h1>
-          <button class="btn gold" id="tx-add">＋ Add</button>
+          <button class="btn gold" id="tx-add">${UI.icon("plus")}Add transaction</button>
         </div>
         ${App.exportBanner()}
         <div class="filter-row">
@@ -81,7 +81,7 @@
         <div class="tx-desc">${App.esc(t.description) || '<i>(no description)</i>'}</div>
         <div class="tx-meta">
           <span class="chip">${App.esc(t.category)}</span>
-          <span class="chip" style="border-color:${color};color:${color}">${App.esc(t.who)}</span>
+          <span class="chip who"><i class="swatch" style="background:${color}"></i>${App.esc(t.who)}</span>
           ${t.account ? `<span class="tx-account">${App.esc(t.account)}</span>` : ''}
         </div>
       </div>

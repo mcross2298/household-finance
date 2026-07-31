@@ -63,10 +63,10 @@
         </div>
 
         <section class="card card-navy stat-band">
-          ${stat('Net worth', latest ? S.fmt$(latest.net, 0) : '—')}
-          ${stat('Assets', latest ? S.fmt$(latest.assets, 0) : '—')}
-          ${stat('Debts', latest ? S.fmt$(latest.debts, 0) : '—')}
-          ${stat('Updated', latest ? S.fmtMonth(latest.ym) : 'never')}
+          ${UI.stat('Net worth', latest ? S.fmt$(latest.net, 0) : '—')}
+          ${UI.stat('Assets', latest ? S.fmt$(latest.assets, 0) : '—')}
+          ${UI.stat('Debts', latest ? S.fmt$(latest.debts, 0) : '—')}
+          ${UI.stat('Updated', latest ? S.fmtMonth(latest.ym) : 'never')}
         </section>
 
         <section class="card">
@@ -79,12 +79,12 @@
           <section class="card">
             <div class="card-head"><h2>Assets</h2><span class="card-note">tap to edit</span></div>
             <ul class="acct-list">${assets.map(acctRow).join('')}</ul>
-            <div class="btn-row"><button class="btn sm" id="acct-add-asset">＋ Asset</button></div>
+            <div class="btn-row"><button class="btn gold" id="acct-add-asset">${UI.icon("plus")}Add asset</button></div>
           </section>
           <section class="card">
             <div class="card-head"><h2>Debts</h2><span class="card-note">tap to edit</span></div>
             <ul class="acct-list">${debts.map(acctRow).join('')}</ul>
-            <div class="btn-row"><button class="btn sm" id="acct-add-debt">＋ Debt</button></div>
+            <div class="btn-row"><button class="btn gold" id="acct-add-debt">${UI.icon("plus")}Add debt</button></div>
           </section>
         </div>
 
@@ -116,19 +116,16 @@
     root.querySelectorAll('[data-extra]').forEach(sl => {
       sl.addEventListener('change', () => {
         extraPay[sl.dataset.extra] = +sl.value;
-        App.render({ resetScroll: false });
+        App.render();
       });
     });
     root.querySelectorAll('[data-refi]').forEach(sl => {
       sl.addEventListener('change', () => {
         refiRate[sl.dataset.refi] = +sl.value;
-        App.render({ resetScroll: false });
+        App.render();
       });
     });
   };
-
-  const stat = (label, value) =>
-    `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
 
   /* One modal, every balance — the whole monthly ritual in under two minutes. */
   function snapshotModal() {

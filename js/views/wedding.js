@@ -15,14 +15,14 @@
       <div class="page">
         <div class="page-head">
           <h1>Wedding Payoff</h1>
-          <button class="btn gold" id="w-add">＋ Add vendor</button>
+          <button class="btn gold" id="w-add">${UI.icon("plus")}Add vendor</button>
         </div>
 
         <section class="card card-navy stat-band">
-          ${stat('Wedding date', S.fmtDate(w.date))}
-          ${stat('Total due', S.fmt$(total, 0))}
-          ${stat('Paid', S.fmt$(paid, 0))}
-          ${stat('Remaining', S.fmt$(remaining, 0), remaining > 0 ? 'gold' : '')}
+          ${UI.stat('Wedding date', S.fmtDate(w.date))}
+          ${UI.stat('Total due', S.fmt$(total, 0))}
+          ${UI.stat('Paid', S.fmt$(paid, 0))}
+          ${UI.stat('Remaining', S.fmt$(remaining, 0), remaining > 0 ? 'gold' : '')}
         </section>
         ${remaining === 0 ? `<div class="callout good">All vendors are settled 🎉 — the cash this was absorbing now flows to the <a href="#/house">House Plan</a>.</div>`
           : `<div class="callout">Every dollar here clears by ${S.fmtDate(w.date)} — after that, this money frees up for the House Plan.</div>`}
@@ -58,9 +58,6 @@
       if (v) editModal(v);
     }));
   };
-
-  const stat = (label, value, tone) =>
-    `<div class="stat${tone ? ' ' + tone : ''}"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
 
   function editModal(v) {
     const isNew = !v;

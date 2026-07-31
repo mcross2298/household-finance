@@ -30,9 +30,18 @@
     location.hash = '/' + routeName + qs;
   }
 
+  /* render() replaces the whole view, so anything the browser was holding onto
+     — scroll position, the focused field, the caret inside it — is destroyed
+     unless we put it back. Views call render() for in-place edits far more
+     often than for navigation (a filter, a month step, one cell of an import
+     review), so "reset" is the wrong default: scroll resets only when the
+     route actually changed, and an explicit opts.resetScroll still wins. */
+  let lastRoute = null;
+
   function render(opts) {
-    const resetScroll = !opts || opts.resetScroll !== false;
     const r = route();
+    const resetScroll = opts && opts.resetScroll != null ? opts.resetScroll : r !== lastRoute;
+    lastRoute = r;
     const view = document.getElementById('view');
     document.getElementById('topbar-title').textContent = TITLES[r];
     document.title = TITLES[r] + " — Household Finance";
@@ -42,9 +51,37 @@
       a.classList.toggle('active', active);
     });
     if (resetScroll) { view.scrollTop = 0; window.scrollTo(0, 0); }
+    // Replacing innerHTML empties the document for an instant, and the browser
+    // clamps scroll to 0 before the new content is measured. Not resetting
+    // isn't enough — the position has to be captured and put back.
+    const keepY = resetScroll ? 0 : window.scrollY;
+
+    const active = document.activeElement;
+    const keepId = active && active.id && view.contains(active) ? active.id : null;
+    // Only text-ish inputs expose a caret; number/date/checkbox throw on read.
+    let caret = null;
+    if (keepId) { try { caret = [active.selectionStart, active.selectionEnd]; } catch (e) { caret = null; } }
+
     Views[r](view);
+
+    if (!resetScroll && keepY) {
+      // The first attempt runs before the browser has re-laid-out the new
+      // content, so it clamps against the emptied document; the rAF pass lands
+      // after layout and before paint, so the correction is never visible.
+      const restoreY = () => { if (window.scrollY !== keepY) window.scrollTo(0, keepY); };
+      restoreY();
+      requestAnimationFrame(restoreY);
+    }
+
+    if (keepId) {
+      const restored = document.getElementById(keepId);
+      if (restored) {
+        restored.focus({ preventScroll: true });
+        if (caret) { try { restored.setSelectionRange(caret[0], caret[1]); } catch (e) { /* type has no caret */ } }
+      }
+    }
     const expBtn = document.getElementById('export-banner-btn');
-    if (expBtn) expBtn.addEventListener('click', () => { exportTransactionsCSV(); render({ resetScroll: false }); });
+    if (expBtn) expBtn.addEventListener('click', () => { exportTransactionsCSV(); render(); });
     const fab = document.getElementById('fab-add');
     if (fab) fab.classList.toggle('hidden', ['transactions', 'import', 'backup'].includes(r));
     const foot = document.getElementById('side-foot');
@@ -73,7 +110,7 @@
         <div class="modal" role="dialog" aria-modal="true" aria-label="${title}">
           <div class="modal-head">
             <h3>${title}</h3>
-            <button class="icon-btn modal-x" aria-label="Close">✕</button>
+            <button class="icon-btn modal-x" aria-label="Close">${(window.UI && UI.icon('close')) || ''}</button>
           </div>
           <div class="modal-body">${bodyHTML}</div>
         </div>
@@ -118,7 +155,7 @@
   function exportBanner() {
     if (!Store.needsExport()) return '';
     return `<div class="callout warn export-banner">
-      <span>📤 You've made changes since your last CSV export.</span>
+      <span>You've made changes since your last CSV export.</span>
       <button class="btn ghost sm" id="export-banner-btn">Export CSV</button>
     </div>`;
   }
@@ -263,7 +300,7 @@
     root.innerHTML = `
       <div class="install-banner-inner">
         <div class="callout install-banner">
-          <span>📲 Install Household Finance for one-tap access and offline use.</span>
+          <span>Install Household Finance for one-tap access and offline use.</span>
           <div class="btn-row" style="margin:0">
             <button class="btn gold sm" id="install-go">Install</button>
             <button class="btn ghost sm" id="install-dismiss">Not now</button>
@@ -337,7 +374,7 @@
       t = setTimeout(() => {
         if (window.innerWidth !== lastWidth) {
           lastWidth = window.innerWidth;
-          render({ resetScroll: false });
+          render();
         }
       }, 200);
     };

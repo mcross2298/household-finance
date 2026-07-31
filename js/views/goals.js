@@ -18,17 +18,17 @@
       <div class="page">
         <div class="page-head">
           <h1>Savings Goals</h1>
-          <button class="btn gold" id="g-add">＋ Add goal</button>
+          <button class="btn gold" id="g-add">${UI.icon("plus")}Add goal</button>
         </div>
 
         <section class="card card-navy stat-band">
-          ${stat('Active target', S.fmt$(progress.target, 0))}
-          ${stat('Saved so far', S.fmt$(progress.saved, 0))}
-          ${stat('Committed / mo', S.fmt$(progress.monthly, 0))}
-          ${stat('Surplus after goals', S.fmt$(after, 0), after < 0 ? 'bad' : 'gold')}
+          ${UI.stat('Active target', S.fmt$(progress.target, 0))}
+          ${UI.stat('Saved so far', S.fmt$(progress.saved, 0))}
+          ${UI.stat('Committed / mo', S.fmt$(progress.monthly, 0))}
+          ${UI.stat('Surplus after goals', S.fmt$(after, 0), after < 0 ? 'bad' : 'gold')}
         </section>
         ${after < 0 ? `<div class="callout warn">Goal contributions exceed your monthly surplus by <b>${S.fmt$(-after, 0)}</b>. Trim a contribution or the budget to bring it back in line.</div>` : ''}
-        ${frozen.length ? `<div class="callout">🧊 <b>${frozen.length}</b> goal${frozen.length > 1 ? 's' : ''} frozen — ${S.fmt$(progress.frozenMonthly, 0)}/mo paused and excluded from the totals above. Hold the lock on a card to unfreeze it.</div>` : ''}
+        ${frozen.length ? `<div class="callout">${UI.icon("freeze")} <b>${frozen.length}</b> goal${frozen.length > 1 ? 's' : ''} frozen — ${S.fmt$(progress.frozenMonthly, 0)}/mo paused and excluded from the totals above. Hold the lock on a card to unfreeze it.</div>` : ''}
 
         <div class="goal-grid">
           ${ordered.map(g => {
@@ -38,7 +38,7 @@
               <div class="goal-top">
                 <div class="goal-ring" id="ring-${g.id}"></div>
                 <div class="goal-info">
-                  <h3>${App.esc(g.name)} ${isFrozen ? '<span class="pill plain">🔒 Frozen</span>' : ''}</h3>
+                  <h3>${App.esc(g.name)} ${isFrozen ? '<span class="pill plain">' + UI.icon('lock') + ' Frozen</span>' : ''}</h3>
                   <div class="goal-nums">${S.fmt$(g.saved, 0)} <span class="muted">of</span> ${S.fmt$(g.target, 0)}</div>
                   <div class="goal-sub">${isFrozen ? 'Paused — not counted in active goals'
                     : S.fmt$(g.monthly, 0) + '/mo · ' +
@@ -50,11 +50,11 @@
               <div class="btn-row">
                 ${isFrozen ? `
                   <button class="btn slim unlock-hold" data-unlock="${g.id}" aria-label="Hold to unlock ${App.esc(g.name)}">
-                    <span class="unlock-fill"></span><span class="unlock-label">🔒 Hold to unlock</span>
+                    <span class="unlock-fill"></span><span class="unlock-label">${UI.icon("lock")}Hold to unlock</span>
                   </button>` : `
-                  <button class="btn slim" data-act="fund" data-id="${g.id}">＋ Add money</button>
+                  <button class="btn slim" data-act="fund" data-id="${g.id}">${UI.icon("plus")}Add money</button>
                   <button class="btn slim ghost" data-act="edit" data-id="${g.id}">Edit</button>
-                  <button class="btn slim ghost" data-act="freeze" data-id="${g.id}">🧊 Freeze</button>`}
+                  <button class="btn slim ghost" data-act="freeze" data-id="${g.id}">${UI.icon("freeze")}Freeze</button>`}
               </div>
             </section>`;
           }).join('')}
@@ -97,9 +97,6 @@
       btn.addEventListener('keyup', e => { if (e.key === 'Enter' || e.key === ' ') cancel(); });
     });
   };
-
-  const stat = (label, value, tone) =>
-    `<div class="stat${tone ? ' ' + tone : ''}"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
 
   function fundModal(g) {
     const m = App.modal('Add money — ' + App.esc(g.name), `

@@ -85,7 +85,7 @@
   function categoryBars(container, items, onClick, pace) {
     container.innerHTML = '';
     if (!items.length) { container.innerHTML = '<p class="empty">No spending recorded for this month yet.</p>'; return; }
-    const rowH = 34, labelW = 128, valueW = 84, h = items.length * rowH;
+    const rowH = 44, labelW = 128, valueW = 84, h = items.length * rowH;
     const w = Math.max(320, container.clientWidth || 560);
     const plotW = w - labelW - valueW;
     const max = Math.max(...items.map(i => Math.max(i.value, i.budget || 0))) * 1.05 || 1;
@@ -134,7 +134,7 @@
      onClick(who), when given, makes each segment + legend item a drill-down target. */
   function whoDonut(container, map, dark, onClick) {
     container.innerHTML = '';
-    const colors = dark ? WHO_COLORS_DARK : WHO_COLORS;
+    const colorFor = who => whoColor(who, dark);
     const entries = Object.entries(map).filter(([, v]) => v > 0);
     const total = entries.reduce((s, [, v]) => s + v, 0);
     if (!total) { container.innerHTML = '<p class="empty">No spending recorded for this month yet.</p>'; return; }
@@ -151,7 +151,7 @@
       const large = (e - s) > Math.PI ? 1 : 0;
       const p = `M ${cx + r * Math.cos(s)} ${cy + r * Math.sin(s)} A ${r} ${r} 0 ${large} 1 ${cx + r * Math.cos(e)} ${cy + r * Math.sin(e)}`;
       const arc = el('path', {
-        d: p, fill: 'none', stroke: colors[who], 'stroke-width': thick, 'stroke-linecap': 'butt',
+        d: p, fill: 'none', stroke: colorFor(who), 'stroke-width': thick, 'stroke-linecap': 'butt',
         class: onClick ? 'clickable' : ''
       }, svg);
       hoverable(arc, `<strong>${who}</strong><br>${fmt$(v)} · ${Store.fmtPct(frac, 0)}`);
@@ -182,7 +182,7 @@
     entries.forEach(([who, v]) => {
       const item = document.createElement(onClick ? 'button' : 'span');
       item.className = 'legend-item' + (onClick ? ' clickable' : '');
-      item.innerHTML = `<span class="swatch" style="background:${colors[who]}"></span>${who} <b>${fmt$(v)}</b>`;
+      item.innerHTML = `<span class="swatch" style="background:${colorFor(who)}"></span>${who} <b>${fmt$(v)}</b>`;
       if (onClick) item.addEventListener('click', () => onClick(who));
       legend.appendChild(item);
     });

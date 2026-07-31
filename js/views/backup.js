@@ -7,6 +7,7 @@
     const S = Store;
     const n = S.data.transactions.length;
     const stamp = () => new Date().toISOString().slice(0, 10);
+    const issues = S.integrityCheck();
 
     root.innerHTML = `
       <div class="page">
@@ -18,7 +19,7 @@
              a fixed column order you can open in Excel, Google Sheets, or Numbers, or wire into
              your own analysis workbook.</p>
           <div class="btn-row">
-            <button class="btn gold" id="exp-csv">⬇ Export transactions CSV</button>
+            <button class="btn gold" id="exp-csv">${UI.icon("download")}Export transactions CSV</button>
           </div>
         </section>
 
@@ -28,8 +29,8 @@
              wedding — in one file. This is also the device-to-device handoff: export here, then
              restore on another phone or computer to move your data across.</p>
           <div class="btn-row">
-            <button class="btn" id="exp-json">⬇ Download backup</button>
-            <label class="btn ghost file-btn">⬆ Restore from backup
+            <button class="btn" id="exp-json">${UI.icon("download")}Download backup</button>
+            <label class="btn ghost file-btn">${UI.icon("upload")}Restore from backup
               <input type="file" id="imp-json" accept=".json,application/json" hidden>
             </label>
           </div>
@@ -53,12 +54,20 @@
              <b>${new Date(S.data.lastUpdated).toLocaleString()}</b>.</p>
         </section>
 
+        <section class="card">
+          <div class="card-head"><h2>Data health</h2></div>
+          ${issues.length
+            ? `<ul class="health-list">${issues.map(i => `<li>${UI.icon('alert')} ${App.esc(i)}</li>`).join('')}</ul>
+               <p class="help">Fix these where they live (Transactions, Budget, Goals) — the app never rewrites your data on its own.</p>`
+            : '<p class="help">No issues found — dates, amounts, categories and Who values all check out.</p>'}
+        </section>
+
         <section class="card danger-zone">
           <div class="card-head"><h2>Danger zone</h2></div>
           <p class="help">New here? <b>Start fresh</b> clears the demo household so you can enter your
              own. Changed your mind? <b>Reset to demo data</b> brings the sample household back.</p>
           <div class="btn-row">
-            <button class="btn gold" id="start-fresh">✨ Start fresh (clear demo data)</button>
+            <button class="btn gold" id="start-fresh">${UI.icon("sparkle")}Start fresh (clear demo data)</button>
             <button class="btn danger ghost" id="reset-app">Reset to demo data</button>
           </div>
         </section>
@@ -152,7 +161,7 @@
   function renderLockStatus(slot) {
     if (!slot) return;
     if (!Lock.isEnabled()) {
-      slot.innerHTML = `<div class="btn-row"><button class="btn gold" id="lock-enable">🔒 Turn on app lock</button></div>`;
+      slot.innerHTML = `<div class="btn-row"><button class="btn gold" id="lock-enable">${UI.icon("lock")}Turn on app lock</button></div>`;
       slot.querySelector('#lock-enable').addEventListener('click', openSetupPinModal);
       return;
     }

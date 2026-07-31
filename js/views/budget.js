@@ -19,7 +19,7 @@
       if (b.type === 'Fixed') {
         if (!st) return '';
         return st.posted
-          ? `<span class="line-status posted">✓ posted ${S.fmtDate(st.tx.date).replace(/, \d{4}$/, '')}</span>`
+          ? `<span class="line-status posted">${UI.icon("check")} posted ${S.fmtDate(st.tx.date).replace(/, \d{4}$/, '')}</span>`
           : (b.cashPay ? '<span class="line-status pending">cash-pay — posts automatically on the due day</span>'
             : '<span class="line-status pending">not yet this month</span>');
       }
@@ -34,7 +34,7 @@
     const streakBadge = b => {
       if (!S.data.streaksEnabled || b.type !== 'Discretionary') return '';
       const streak = S.underBudgetStreak(b.id);
-      return streak >= 2 ? `<span class="streak-badge">🔥 ${streak}mo under</span>` : '';
+      return streak >= 2 ? `<span class="streak-badge">${UI.icon("flame")} ${streak}mo under</span>` : '';
     };
 
     const section = sec => S.data.budget.filter(b => b.section === sec);
@@ -61,26 +61,26 @@
       <div class="page">
         <div class="page-head">
           <h1>Budget</h1>
-          <button class="btn gold" id="b-add">＋ Add line</button>
+          <button class="btn gold" id="b-add">${UI.icon("plus")}Add expense</button>
         </div>
 
         <section class="card card-navy stat-band">
-          ${stat('Monthly budget', S.fmt$(total, 0))}
-          ${stat('Annual', S.fmt$(total * 12, 0))}
-          ${stat('Fixed', S.fmt$(byType.Fixed, 0) + ' · ' + S.fmtPct(total ? byType.Fixed / total : 0, 0))}
-          ${stat('Discretionary', S.fmt$(byType.Discretionary, 0) + ' · ' + S.fmtPct(total ? byType.Discretionary / total : 0, 0))}
+          ${UI.stat('Monthly budget', S.fmt$(total, 0))}
+          ${UI.stat('Annual', S.fmt$(total * 12, 0))}
+          ${UI.stat('Fixed', S.fmt$(byType.Fixed, 0) + ' · ' + S.fmtPct(total ? byType.Fixed / total : 0, 0))}
+          ${UI.stat('Discretionary', S.fmt$(byType.Discretionary, 0) + ' · ' + S.fmtPct(total ? byType.Discretionary / total : 0, 0))}
         </section>
 
         <section class="card">
           <div class="card-head"><h2>Household &amp; income</h2>
-            <button class="btn ghost slim" id="m-add">＋ Add member</button></div>
+            <button class="btn ghost slim" id="m-add">${UI.icon("plus")}Add member</button></div>
           <div class="member-list">
             ${S.members().map((n, i) => `
               <div class="member-block">
                 <div class="member-row" data-idx="${i}">
                   <input class="input member-name" data-idx="${i}" value="${App.esc(n)}" aria-label="Member name">
                   <label class="member-inc"><span>$</span><input class="input" type="number" min="0" step="1" data-inc-idx="${i}" value="${+S.data.incomes[n] || 0}" aria-label="${App.esc(n)} monthly take-home"></label>
-                  <button class="btn danger ghost slim" data-remove-idx="${i}"${S.members().length <= 1 ? ' disabled' : ''} title="Remove ${App.esc(n)}" aria-label="Remove ${App.esc(n)}">✕</button>
+                  <button class="btn danger ghost slim" data-remove-idx="${i}"${S.members().length <= 1 ? ' disabled' : ''} title="Remove ${App.esc(n)}" aria-label="Remove ${App.esc(n)}">${UI.icon('close')}</button>
                 </div>
                 <div class="form-grid member-paycycle">
                   ${payCycleFields(n, i)}
@@ -96,7 +96,7 @@
             ${p.section.Shared > 0 && S.members().length
               ? `<span class="card-note">Shared lines split evenly → ${S.members().map(n => `${App.esc(n)} ${S.fmt$(p.attributed[n], 0)}`).join(' · ')}</span>` : ''}</div>
           <label class="checkline" style="margin-bottom:10px"><input type="checkbox" id="streaks-toggle"${S.data.streaksEnabled ? ' checked' : ''}>
-            🔥 Show under-budget streaks (2+ consecutive closed months)</label>
+            ${UI.icon("flame")} Show under-budget streaks (2+ consecutive closed months)</label>
           ${secBlock('Shared')}${S.members().map(secBlock).join('')}
         </section>
       </div>`;
@@ -122,7 +122,7 @@
         if (n == null) return;
         S.data.payCycles[n] = S.data.payCycles[n] || { frequency: 'biweekly', anchor: null };
         S.data.payCycles[n].anchor = e.target.value || null;
-        S.save(); App.render({ resetScroll: false });
+        S.save(); App.render();
       }));
     root.querySelectorAll('input.member-name').forEach(inp =>
       inp.addEventListener('change', e => {
@@ -145,7 +145,7 @@
     root.querySelector('#m-add').addEventListener('click', addMemberModal);
     root.querySelector('#streaks-toggle').addEventListener('change', e => {
       S.data.streaksEnabled = e.target.checked;
-      S.save(); App.render({ resetScroll: false });
+      S.save(); App.render();
     });
     root.querySelector('#b-add').addEventListener('click', () => editModal(null));
     root.querySelectorAll('.budget-row').forEach(li =>
@@ -161,9 +161,6 @@
       App.clearRouteParams();
     }
   };
-
-  const stat = (label, value) =>
-    `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
 
   const PAY_FREQUENCY_LABELS = { weekly: 'Weekly', biweekly: 'Biweekly', semimonthly: 'Semi-monthly', monthly: 'Monthly' };
   function payCycleFields(name, idx) {

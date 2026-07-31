@@ -28,6 +28,6 @@
     ruleFor, suggestRule, learnRule, likelyDuplicate,
     matchBudgetLine, budgetLineStatus,
     effectiveBudget, rolloverAdjustmentTotal, autoPostDueBills, underBudgetStreak,
-    addImportBatch, undoImportBatch
+    addImportBatch, undoImportBatch, integrityCheck
   };
   load();

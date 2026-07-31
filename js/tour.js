@@ -57,9 +57,4 @@
   }
 
   window.Tour = { open, maybeAutoStart };
-
-  ['tour-btn-desktop', 'tour-btn-mobile'].forEach(id => {
-    const btn = document.getElementById(id);
-    if (btn) btn.addEventListener('click', () => open(0));
-  });
 })();

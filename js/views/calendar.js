@@ -56,15 +56,15 @@
         ${App.exportBanner()}
 
         <section class="card card-navy stat-band">
-          ${stat('Due this week', dueSoon.length ? S.fmt$(dueSoon.reduce((s, i) => s + i.amount, 0), 0) + ' · ' + dueSoon.length : '—')}
-          ${stat('Overdue', overdue.length ? String(overdue.length) : 'none', overdue.length ? 'bad' : '')}
-          ${stat('Posted', posted.length + ' of ' + postable.length)}
-          ${stat('Month total', S.fmt$(items.reduce((s, i) => s + i.amount, 0), 0))}
+          ${UI.stat('Due this week', dueSoon.length ? S.fmt$(dueSoon.reduce((s, i) => s + i.amount, 0), 0) + ' · ' + dueSoon.length : '—')}
+          ${UI.stat('Overdue', overdue.length ? String(overdue.length) : 'none', overdue.length ? 'bad' : '')}
+          ${UI.stat('Posted', posted.length + ' of ' + postable.length)}
+          ${UI.stat('Month total', S.fmt$(items.reduce((s, i) => s + i.amount, 0), 0))}
         </section>
 
         <section class="card">
           <div class="card-head"><h2>${S.fmtMonth(month)} schedule</h2>
-            <span class="card-note">bills check off automatically when the transaction posts · 💰 marks paydays</span></div>
+            <span class="card-note">bills check off automatically when the transaction posts · paydays are marked</span></div>
           ${dayKeys.length ? dayKeys.map(day => `
             <div class="cal-day">
               <div class="cal-day-chip${day === new Date().toISOString().slice(0, 10) ? ' today' : ''}">
@@ -72,7 +72,7 @@
                 <span class="cal-day-dow">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(day + 'T00:00:00').getDay()]}</span>
               </div>
               <div class="cal-day-body">
-                ${paydayMap[day] ? `<div class="cal-payday">💰 ${paydayMap[day].map(App.esc).join(' & ')} payday</div>` : ''}
+                ${paydayMap[day] ? `<div class="cal-payday">${UI.icon("cash")} ${paydayMap[day].map(App.esc).join(' & ')} payday</div>` : ''}
                 ${byDay[day] ? `<ul class="cal-list">${byDay[day].map(i => row(i, fundedBy)).join('')}</ul>` : ''}
               </div>
             </div>`).join('')
@@ -112,7 +112,7 @@
         <section class="card">
           <div class="card-head"><h2>Month-end close</h2></div>
           ${lastCheck.closed
-            ? `<p class="help">✓ ${S.fmtMonth(last)} was closed on ${S.fmtDate(S.data.closes[last].closedAt.slice(0, 10))}.</p>
+            ? `<p class="help">${UI.icon("check")} ${S.fmtMonth(last)} was closed on ${S.fmtDate(S.data.closes[last].closedAt.slice(0, 10))}.</p>
                <div class="btn-row"><button class="btn" id="close-view">View ${S.fmtMonth(last)} summary</button></div>`
             : `<p class="help">Put ${S.fmtMonth(last)} to bed: confirm everything's imported and categorized,
                check the bills posted, update goal balances, export your CSV — then get the month's report card.</p>
@@ -178,12 +178,9 @@
       notes: 'Marked paid from a notification'
     });
     S.touchTransactions(); S.save();
-    App.render({ resetScroll: false });
+    App.render();
     App.toast('Marked "' + b.name + '" paid');
   }
-
-  const stat = (label, value, tone) =>
-    `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value${tone ? ' ' + tone : ''}">${value}</div></div>`;
 
   /* Day-by-day spend intensity for the displayed month — companion to the
      bill schedule above: that answers "what's due," this answers "which
@@ -202,7 +199,7 @@
       const iso = month + '-' + String(d).padStart(2, '0');
       const amt = dayTotals[iso] || 0;
       const intensity = amt > 0 ? Math.max(0.15, Math.min(1, amt / max)) : 0;
-      cells.push(`<a class="heatmap-cell${iso === today ? ' today' : ''}" href="#/transactions?month=${month}"
+      cells.push(`<a class="heatmap-cell${iso === today ? ' today' : ''}${intensity >= 0.45 ? ' hot' : ''}" href="#/transactions?month=${month}"
         style="--intensity:${intensity}" title="${S.fmtDate(iso)}: ${S.fmt$(amt, 0)}">
         <span class="heatmap-day">${d}</span>
       </a>`);
@@ -217,7 +214,7 @@
   }
 
   const STATUS = {
-    done: ['good', '✓ posted'],
+    done: ['good', 'posted'],
     soon: ['warn', 'due soon'],
     overdue: ['bad', 'overdue'],
     missed: ['bad', 'not posted'],
@@ -290,7 +287,7 @@
       </div>
       <p class="help" id="rem-status">${
         !supported ? 'This browser doesn\'t support notifications — upcoming bills still surface in the Dashboard insights and here.'
-        : perm === 'denied' ? '⚠ Notifications are blocked for this app in your browser settings. Upcoming bills still surface in the Dashboard insights.'
+        : perm === 'denied' ? 'Notifications are blocked for this app in your browser settings. Upcoming bills still surface in the Dashboard insights.'
         : 'Reminders are checked when you open the app and fire as a notification where the platform allows it (iOS home-screen apps are restrictive) — the Dashboard insights always show what\'s due regardless. Everything stays on this device.'}</p>
       <label class="checkline" style="margin-top:10px"><input type="checkbox" id="rem-insights"${r.insightsEnabled ? ' checked' : ''}>
         Also notify me about insights worth a look (price jumps, tight forecast months)</label>`;
@@ -345,7 +342,7 @@
     const goals = S.data.goals;
     const step = (n, ok, title, body) => `
       <div class="close-step${ok ? ' ok' : ''}">
-        <span class="close-step-mark">${ok ? '✓' : n}</span>
+        <span class="close-step-mark">${ok ? UI.icon('check') : n}</span>
         <div class="close-step-body"><b>${title}</b>${body ? `<div class="close-step-sub">${body}</div>` : ''}</div>
       </div>`;
     const m = App.modal('Close out ' + S.fmtMonth(ym), `
@@ -390,14 +387,14 @@
     const exp = m.el.querySelector('#close-export');
     if (exp) exp.addEventListener('click', () => {
       App.exportTransactionsCSV();
-      exp.replaceWith(Object.assign(document.createElement('span'), { textContent: '✓ exported' }));
+      exp.replaceWith(Object.assign(document.createElement('span'), { textContent: 'Exported' }));
     });
     m.el.querySelector('#close-cancel').addEventListener('click', m.close);
     m.el.querySelector('#close-commit').addEventListener('click', () => {
       S.closeMonth(ym);
       m.close();
       summaryModal(ym);
-      App.render({ resetScroll: false });
+      App.render();
     });
   }
 

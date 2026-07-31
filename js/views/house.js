@@ -73,9 +73,7 @@
     const S = Store;
     const r = S.houseScenario(s);
     const pctBad = r.pctIncome != null && r.pctIncome > 0.28;
-    const row = (label, value, cls) =>
-      `<div class="sc-row${cls ? ' ' + cls : ''}"><span>${label}</span><b>${value}</b></div>`;
-    return `<section class="card sc-card">
+    return `<section class="card">
       <div class="card-head"><h2>${App.esc(s.label)}</h2>
         ${r.vsTarget ? `<span class="pill ${r.vsTarget === 'ON TRACK' ? 'good' : 'bad'}">${r.vsTarget}</span>` : ''}</div>
       <div class="sc-inputs">
@@ -83,19 +81,19 @@
         <label>Down payment (%)<input class="input" type="number" step="1" value="${s.downPct}" data-sc="${i}" data-k="downPct"></label>
       </div>
       <div class="sc-piti">${S.fmt$(r.piti, 0)}<span>/mo PITI</span></div>
-      ${row('% of take-home', S.fmtPct(r.pctIncome), pctBad ? 'flag' : '')}
+      ${UI.scRow('% of take-home', S.fmtPct(r.pctIncome), pctBad ? 'flag' : '')}
       ${pctBad ? '<div class="sc-flag">above the 28% comfort line</div>' : ''}
       <div class="sc-detail">
-        ${row('Down payment', S.fmt$(r.down, 0))}
-        ${row('Loan amount', S.fmt$(r.loan, 0))}
-        ${row('Principal & interest', S.fmt$(r.pi, 0))}
-        ${row('Property tax', S.fmt$(r.tax, 0))}
-        ${row('Insurance', S.fmt$(r.ins, 0))}
-        ${row('PMI', r.pmi > 0 ? S.fmt$(r.pmi, 0) : '—')}
-        ${row('Closing costs', S.fmt$(r.closing, 0))}
-        ${row('Cash to close', S.fmt$(r.cashToClose, 0), 'strong')}
-        ${row('Still to save', S.fmt$(r.stillToSave, 0))}
-        ${row('Ready by', r.readyBy ? S.fmtDate(r.readyBy) : 'set a monthly contribution', 'strong')}
+        ${UI.scRow('Down payment', S.fmt$(r.down, 0))}
+        ${UI.scRow('Loan amount', S.fmt$(r.loan, 0))}
+        ${UI.scRow('Principal & interest', S.fmt$(r.pi, 0))}
+        ${UI.scRow('Property tax', S.fmt$(r.tax, 0))}
+        ${UI.scRow('Insurance', S.fmt$(r.ins, 0))}
+        ${UI.scRow('PMI', r.pmi > 0 ? S.fmt$(r.pmi, 0) : '—')}
+        ${UI.scRow('Closing costs', S.fmt$(r.closing, 0))}
+        ${UI.scRow('Cash to close', S.fmt$(r.cashToClose, 0), 'strong')}
+        ${UI.scRow('Still to save', S.fmt$(r.stillToSave, 0))}
+        ${UI.scRow('Ready by', r.readyBy ? S.fmtDate(r.readyBy) : 'set a monthly contribution', 'strong')}
       </div>
     </section>`;
   }

@@ -133,11 +133,11 @@
     root.innerHTML = `
       <div class="lock-gate">
         <div class="lock-card" id="lock-card">
-          <div class="lock-ico" aria-hidden="true">🔒</div>
+          <div class="lock-ico" aria-hidden="true"></div>
           <div class="lock-title">${esc(APP_NAME)} is locked</div>
           <div class="lock-sub">Enter your PIN to continue.</div>
           <form id="lock-pin-form" autocomplete="off">
-            <label for="lock-pin-input" class="sr-only" style="position:absolute;left:-9999px;">PIN</label>
+            <label for="lock-pin-input" class="sr-only">PIN</label>
             <input class="input lock-pin" id="lock-pin-input" type="password" inputmode="numeric"
               pattern="[0-9]*" minlength="4" maxlength="8" placeholder="••••" autofocus
               aria-label="PIN">
@@ -206,13 +206,13 @@
     root.innerHTML = `
       <div class="lock-gate">
         <div class="lock-card">
-          <div class="lock-ico" aria-hidden="true">🗝️</div>
+          <div class="lock-ico" aria-hidden="true">️</div>
           <div class="lock-title">Restore from backup</div>
           <div class="lock-sub">There's no way around a forgotten PIN — that's the point. Choosing a
             backup file replaces everything on this device with what's in it, and turns the lock off
             so you can set a new PIN.</div>
           <div class="lock-actions">
-            <label class="btn ghost file-btn">⬆ Choose backup file
+            <label class="btn ghost file-btn">Choose backup file
               <input type="file" id="lock-restore-file" accept=".json,application/json" hidden>
             </label>
             <button class="btn ghost" type="button" id="lock-forgot-cancel">Back to PIN</button>
@@ -245,7 +245,7 @@
     root.innerHTML = `
       <div class="lock-gate">
         <div class="lock-card">
-          <div class="lock-ico" aria-hidden="true">⚠️</div>
+          <div class="lock-ico" aria-hidden="true">️</div>
           <div class="lock-title">Replace everything on this device?</div>
           <div class="lock-sub">${next.transactions.length} transactions, last updated
             ${next.lastUpdated ? new Date(next.lastUpdated).toLocaleDateString() : 'unknown'}.

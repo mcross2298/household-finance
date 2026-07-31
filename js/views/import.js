@@ -21,7 +21,7 @@
 
         <section class="card drop-card" id="drop-zone">
           <div class="drop-inner">
-            <div class="drop-ico" aria-hidden="true">⇪</div>
+            <div class="drop-ico" aria-hidden="true">${UI.icon("upload")}</div>
             <h2>Drop a statement here</h2>
             <p>PDF bank/card statement or a CSV in the standard schema.<br>
                Nothing is saved until you review it.</p>
@@ -66,7 +66,7 @@
                 <span class="rule-match">${App.esc(r.match)}</span>
                 <select class="select slim" data-rf="category">${App.options(Store.CATEGORIES, r.category)}</select>
                 <select class="select slim" data-rf="who">${App.options(Store.WHO, r.who)}</select>
-                <button class="icon-btn" data-rdel="${r.id}" aria-label="Delete rule">✕</button>
+                <button class="icon-btn" data-rdel="${r.id}" aria-label="Delete rule">${UI.icon("close")}</button>
               </li>`).join('')}
           </ul>
         </section>` : ''}
@@ -174,7 +174,7 @@
     const exact = Store.CSV_HEADER.every((h, i) => (header[i] || '').toLowerCase() === h.toLowerCase());
     if (exact || (map.date >= 0 && map.amount >= 0 && map.description >= 0)) {
       buildPending(rows.slice(1), map);
-      return App.render();
+      return App.render({ resetScroll: true });
     }
     mappingModal(header, rows, map);
   }
@@ -197,7 +197,7 @@
       m.el.querySelectorAll('[data-map]').forEach(s => chosen[s.dataset.map] = +s.value);
       for (const f of required) if (chosen[f] < 0) return App.toast('Map the ' + f + ' column', 'warn');
       buildPending(rows.slice(1), chosen);
-      m.close(); App.render();
+      m.close(); App.render({ resetScroll: true });
     });
   }
 
@@ -288,7 +288,7 @@
       pending = rows;
       whoTouched = false;
       applyIntelligence(true);
-      App.render();
+      App.render({ resetScroll: true });
     } catch (e) {
       App.toast('Could not read that PDF', 'warn');
     }
@@ -365,7 +365,7 @@
             </select>
             <span class="help" style="margin:0">${whoTouched
               ? 'Applies to every row here; you can still override individual rows in the table.'
-              : '⚠ Not set yet — every row will default to "Shared" unless you pick someone.'}</span>
+              : 'Not set yet — every row will default to "Shared" unless you pick someone.'}</span>
           </div>
           <div class="rev-tools">
             <label>Account for all rows
@@ -384,7 +384,7 @@
                     <td><input class="input slim wide" value="${App.esc(p.description)}" data-i="${i}" data-f="description"></td>
                     <td><input class="input slim num" type="number" step="0.01" value="${p.amount}" data-i="${i}" data-f="amount"></td>
                     <td><select class="select slim" data-i="${i}" data-f="category">
-                      ${p.category ? '' : `<option value="" selected>⚠ ${App.esc(p.rawCategory || 'pick')}</option>`}
+                      ${p.category ? '' : `<option value="" selected>${App.esc(p.rawCategory || 'pick')} — needs a category</option>`}
                       ${App.options(Store.CATEGORIES, p.category)}</select></td>
                     <td><select class="select slim" data-i="${i}" data-f="who">${App.options(Store.WHO, p.who)}</select></td>
                     <td>${p.auto ? `<span class="pill auto" title="${p.auto === 'rule' ? 'Filled from a learned rule' : 'Matched a recurring budget line'}">auto</span>` : ''}
@@ -425,7 +425,7 @@
     root.querySelector('#rev-who').addEventListener('change', e => {
       if (e.target.value) { pending.forEach(p => p.who = e.target.value); whoTouched = true; App.render(); }
     });
-    root.querySelector('#rev-cancel').addEventListener('click', () => { pending = null; App.render(); });
+    root.querySelector('#rev-cancel').addEventListener('click', () => { pending = null; App.render({ resetScroll: true }); });
     root.querySelector('#rev-commit').addEventListener('click', () => {
       const good = pending.filter(p => p.include && p.date && p.amount !== '' && p.category);
       if (!good.length) return App.toast('Nothing valid selected', 'warn');

@@ -206,3 +206,34 @@
     return before - data.transactions.length;
   }
 
+  /* ---------- data health ---------- */
+  /* Read-only self-check: everything that would silently zero out in a
+     spreadsheet or skew a chart. Reported on the Data screen; never
+     auto-"fixed" — the app doesn't rewrite your data behind your back. */
+  function integrityCheck() {
+    const issues = [];
+    const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+    let badDate = 0, badAmount = 0, badCat = 0, badWho = 0;
+    const who = WHO();
+    for (const t of data.transactions) {
+      if (!dateRe.test(t.date || '')) badDate++;
+      if (isNaN(+t.amount)) badAmount++;
+      if (!CATEGORIES.includes(t.category)) badCat++;
+      if (!who.includes(t.who)) badWho++;
+    }
+    if (badDate) issues.push(badDate + ' transaction(s) with an invalid date');
+    if (badAmount) issues.push(badAmount + ' transaction(s) with a non-numeric amount');
+    if (badCat) issues.push(badCat + ' transaction(s) with a category not on the fixed list');
+    if (badWho) issues.push(badWho + ' transaction(s) attributed to someone no longer in the household');
+    const badBudget = data.budget.filter(b => isNaN(+b.monthly) || +b.monthly < 0 || !CATEGORIES.includes(b.category)).length;
+    if (badBudget) issues.push(badBudget + ' budget line(s) with a bad amount or category');
+    const badGoal = data.goals.filter(g => isNaN(+g.target) || isNaN(+g.saved) || +g.saved < 0).length;
+    if (badGoal) issues.push(badGoal + ' goal(s) with bad numbers');
+    const acctIds = new Set(data.accounts.map(a => a.id));
+    let orphanSnaps = 0;
+    for (const ym in data.snapshots) {
+      for (const id in data.snapshots[ym]) if (!acctIds.has(id)) orphanSnaps++;
+    }
+    if (orphanSnaps) issues.push(orphanSnaps + ' snapshot balance(s) for deleted accounts (harmless, kept for history)');
+    return issues;
+  }

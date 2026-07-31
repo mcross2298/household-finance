@@ -27,6 +27,31 @@ jobs:
       - name: Run money-math tests
         run: node scripts/run-tests.mjs
 
+  token-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check design tokens are themed and no raw hex escaped
+        run: node scripts/check-token-drift.mjs
+
+  a11y:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright (CI-only)
+        run: |
+          npm init -y
+          npm install --no-save playwright@^1
+          npx playwright install --with-deps chromium
+      - name: Contrast and touch targets, every route x both themes
+        run: node scripts/check-a11y.mjs
+
   doc-drift:
     runs-on: ubuntu-latest
     steps:

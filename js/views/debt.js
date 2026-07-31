@@ -23,10 +23,10 @@
         <p class="page-sub">Every debt with a balance, modeled at three payment levels. Balances and minimum payments come from the <a href="#/networth">Net Worth</a> accounts registry — update them there.</p>
 
         <section class="card card-navy stat-band">
-          ${stat('Total owed', S.fmt$(totalBalance, 0))}
-          ${stat('Minimum / mo (all debts)', S.fmt$(totalMin, 0))}
-          ${stat('Debts tracked', String(owed.length))}
-          ${stat('Interest saved, Aggressive vs. Conservative',
+          ${UI.stat('Total owed', S.fmt$(totalBalance, 0))}
+          ${UI.stat('Minimum / mo (all debts)', S.fmt$(totalMin, 0))}
+          ${UI.stat('Debts tracked', String(owed.length))}
+          ${UI.stat('Interest saved, Aggressive vs. Conservative',
             summary[0].interest != null && summary[2].interest != null
               ? S.fmt$(Math.max(0, summary[0].interest - summary[2].interest), 0) : '—')}
         </section>
@@ -87,23 +87,20 @@
     const rollupSlider = root.querySelector('#rollup-extra');
     if (rollupSlider) rollupSlider.addEventListener('change', () => {
       rollupExtra = +rollupSlider.value;
-      App.render({ resetScroll: false });
+      App.render();
     });
   };
-
-  const stat = (label, value) =>
-    `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
 
   function rollupCard(label, plan, other) {
     const S = Store;
     const monthsDelta = other.months - plan.months;
     const interestDelta = other.interest - plan.interest;
-    return `<section class="card sc-card">
+    return `<section class="card">
       <div class="card-head"><h2>${label}</h2></div>
       <div class="sc-piti">${plan.months} mo<span>to debt-free</span></div>
-      ${row('Finish date', S.fmtDate(plan.date), 'strong')}
-      ${row('Total interest', S.fmt$(plan.interest, 0))}
-      ${row('vs. the other order', (monthsDelta === 0 ? 'same finish' : monthsDelta > 0 ? monthsDelta + ' mo sooner' : Math.abs(monthsDelta) + ' mo slower')
+      ${UI.scRow('Finish date', S.fmtDate(plan.date), 'strong')}
+      ${UI.scRow('Total interest', S.fmt$(plan.interest, 0))}
+      ${UI.scRow('vs. the other order', (monthsDelta === 0 ? 'same finish' : monthsDelta > 0 ? monthsDelta + ' mo sooner' : Math.abs(monthsDelta) + ' mo slower')
         + (interestDelta !== 0 ? ' · ' + (interestDelta > 0 ? 'saves ' : 'costs ') + S.fmt$(Math.abs(interestDelta), 0) : ''))}
     </section>`;
   }
@@ -111,18 +108,14 @@
   function strategyCard(s) {
     const S = Store;
     const extraNote = s.extraTotal > 0 ? `${S.fmt$(s.extraTotal, 0)}/mo extra across every debt` : 'minimum payments only';
-    return `<section class="card sc-card">
+    return `<section class="card">
       <div class="card-head"><h2>${s.label}</h2>
         ${s.extraTotal > 0 ? `<span class="pill ${s.affordable ? 'good' : 'bad'}">${s.affordable ? 'Fits surplus' : 'Over surplus'}</span>` : ''}</div>
       <div class="sc-piti">${s.months != null ? s.months + ' mo' : '—'}<span>to debt-free</span></div>
-      ${row('Extra payment', extraNote)}
-      ${row('Interest remaining', s.interest != null ? S.fmt$(s.interest, 0) : '—')}
-      ${row('Payoff date', s.date ? S.fmtDate(s.date) : 'payment doesn\'t cover interest', 'strong')}
+      ${UI.scRow('Extra payment', extraNote)}
+      ${UI.scRow('Interest remaining', s.interest != null ? S.fmt$(s.interest, 0) : '—')}
+      ${UI.scRow('Payoff date', s.date ? S.fmtDate(s.date) : 'payment doesn\'t cover interest', 'strong')}
     </section>`;
-  }
-
-  function row(label, value, cls) {
-    return `<div class="sc-row${cls ? ' ' + cls : ''}"><span>${label}</span><b>${value}</b></div>`;
   }
 
   function debtRow(a) {
