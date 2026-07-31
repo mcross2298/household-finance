@@ -56,6 +56,7 @@
   --on-navy-bad: #F0A196;
   --on-navy-bad-edge: #E36053;
   --on-gold: #1A2333;
+  --on-solid: #FFFFFF;
 }
 
 /* Dark theme: follows the OS by default, or an explicit user choice via the
@@ -159,7 +160,7 @@ h3 { font-size: .95rem; font-weight: 700; }
 .topbar {
   position: sticky; top: 0; z-index: 30;
   display: flex; align-items: center; gap: 10px;
-  background: var(--navy); color: #fff;
+  background: var(--navy); color: var(--on-navy);
   padding: calc(10px + var(--sat)) 16px 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
 }
@@ -186,7 +187,7 @@ h3 { font-size: .95rem; font-weight: 700; }
   .sidebar {
     display: flex; flex-direction: column;
     width: 232px; flex-shrink: 0;
-    background: var(--navy); color: #fff;
+    background: var(--navy); color: var(--on-navy);
     position: sticky; top: 0; height: 100vh;
   }
   .page { padding: 26px 28px 40px; }
@@ -234,7 +235,7 @@ h3 { font-size: .95rem; font-weight: 700; }
   background: var(--surface); border-radius: var(--radius);
   box-shadow: var(--shadow); padding: 16px;
 }
-.card-navy { background: linear-gradient(150deg, var(--navy) 0%, var(--navy-deep) 100%); color: #fff; }
+.card-navy { background: linear-gradient(150deg, var(--navy) 0%, var(--navy-deep) 100%); color: var(--on-navy); }
 .card.glance { border-top: 3px solid var(--gold); }
 .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .card-head .select { width: auto; min-height: 44px; }
@@ -356,7 +357,7 @@ a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 
      icon. Pin the direction here rather than at each call site. */
   display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px;
   min-height: 48px; padding: 0 18px;
-  background: var(--navy); color: #fff;
+  background: var(--navy); color: var(--on-solid);
   border: none; border-radius: 10px; font-weight: 700; font-size: .92rem;
   text-decoration: none;
 }
@@ -365,7 +366,7 @@ a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 
 .btn.gold:hover { background: var(--gold-hover); }
 .btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
 .btn.ghost:hover { background: var(--bg); }
-.btn.danger { background: var(--bad); color: #fff; }
+.btn.danger { background: var(--bad); color: var(--on-solid); }
 .btn.danger.ghost { background: transparent; color: var(--bad-ink); border: 1.5px solid var(--bad-line); }
 .btn.sm { min-height: 44px; padding: 0 14px; font-size: .8rem; flex-shrink: 0; }
 .btn.slim { min-height: 44px; padding: 0 16px; font-size: .84rem; }

@@ -191,7 +191,7 @@
       it => App.go('transactions', { month, category: it.label }),
       isCurrent ? pace : null);
     const chartWho = root.querySelector('#chart-who');
-    if (chartWho) Charts.whoDonut(chartWho, S.spendByWho(month), false,
+    if (chartWho) Charts.whoDonut(chartWho, S.spendByWho(month), null,
       who => App.go('transactions', { month, who }));
 
     const chartTrend = root.querySelector('#chart-trend');

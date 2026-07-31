@@ -7,6 +7,7 @@
     const S = Store;
     const n = S.data.transactions.length;
     const stamp = () => new Date().toISOString().slice(0, 10);
+    const issues = S.integrityCheck();
 
     root.innerHTML = `
       <div class="page">
@@ -51,6 +52,14 @@
              That means: back up before clearing browser data, and export a backup any time
              you've entered something you'd hate to retype. Last updated
              <b>${new Date(S.data.lastUpdated).toLocaleString()}</b>.</p>
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>Data health</h2></div>
+          ${issues.length
+            ? `<ul class="health-list">${issues.map(i => `<li>${UI.icon('alert')} ${App.esc(i)}</li>`).join('')}</ul>
+               <p class="help">Fix these where they live (Transactions, Budget, Goals) — the app never rewrites your data on its own.</p>`
+            : '<p class="help">No issues found — dates, amounts, categories and Who values all check out.</p>'}
         </section>
 
         <section class="card danger-zone">
