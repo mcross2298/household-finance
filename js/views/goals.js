@@ -22,10 +22,10 @@
         </div>
 
         <section class="card card-navy stat-band">
-          ${stat('Active target', S.fmt$(progress.target, 0))}
-          ${stat('Saved so far', S.fmt$(progress.saved, 0))}
-          ${stat('Committed / mo', S.fmt$(progress.monthly, 0))}
-          ${stat('Surplus after goals', S.fmt$(after, 0), after < 0 ? 'bad' : 'gold')}
+          ${UI.stat('Active target', S.fmt$(progress.target, 0))}
+          ${UI.stat('Saved so far', S.fmt$(progress.saved, 0))}
+          ${UI.stat('Committed / mo', S.fmt$(progress.monthly, 0))}
+          ${UI.stat('Surplus after goals', S.fmt$(after, 0), after < 0 ? 'bad' : 'gold')}
         </section>
         ${after < 0 ? `<div class="callout warn">Goal contributions exceed your monthly surplus by <b>${S.fmt$(-after, 0)}</b>. Trim a contribution or the budget to bring it back in line.</div>` : ''}
         ${frozen.length ? `<div class="callout">🧊 <b>${frozen.length}</b> goal${frozen.length > 1 ? 's' : ''} frozen — ${S.fmt$(progress.frozenMonthly, 0)}/mo paused and excluded from the totals above. Hold the lock on a card to unfreeze it.</div>` : ''}
@@ -97,9 +97,6 @@
       btn.addEventListener('keyup', e => { if (e.key === 'Enter' || e.key === ' ') cancel(); });
     });
   };
-
-  const stat = (label, value, tone) =>
-    `<div class="stat${tone ? ' ' + tone : ''}"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
 
   function fundModal(g) {
     const m = App.modal('Add money — ' + App.esc(g.name), `

@@ -101,7 +101,7 @@
         <div class="two-col">
           <section class="card">
             <div class="card-head"><h2>Goals at a Glance</h2><a class="card-link" href="#/goals">All goals →</a></div>
-            <div class="mini-goals">${miniGoals()}</div>
+            <div class="mini-goals">${UI.miniGoals(Store.data.goals)}</div>
           </section>
           <section class="card">
             <div class="card-head"><h2>Who Pays What (Budget)</h2><a class="card-link" href="#/budget">Budget →</a></div>
@@ -147,12 +147,12 @@
             </ul>` : `<div class="due-soon-none">Nothing due — you're clear.</div>`}
           </a>` : ''}
           <div class="kpi-grid">
-            ${kpi('Monthly Budget', S.fmt$(budget, 0), 'recurring plan', null, '#/budget')}
-            ${kpi('Combined Income', S.fmt$(income, 0), 'take-home / mo', null, '#/budget')}
-            ${kpi('Monthly Surplus', S.fmt$(surplus, 0), 'income − budget', surplus < 0 ? 'bad' : 'gold', '#/budget')}
-            ${kpi('Savings Rate', S.fmtPct(rate), 'of take-home', rate < 0 ? 'bad' : '', '#/budget')}
-            ${kpi('House Fund', S.fmtPct(housePct, 0), S.fmt$(houseGoal ? houseGoal.saved : 0, 0) + ' of ' + S.fmt$(houseGoal ? houseGoal.target : 0, 0), null, '#/house')}
-            ${kpi('Wedding Left', S.fmt$(wedding, 0), 'through ' + S.fmtDate(S.data.wedding.date), null, '#/wedding')}
+            ${UI.kpi('Monthly Budget', S.fmt$(budget, 0), 'recurring plan', null, '#/budget')}
+            ${UI.kpi('Combined Income', S.fmt$(income, 0), 'take-home / mo', null, '#/budget')}
+            ${UI.kpi('Monthly Surplus', S.fmt$(surplus, 0), 'income − budget', surplus < 0 ? 'bad' : 'gold', '#/budget')}
+            ${UI.kpi('Savings Rate', S.fmtPct(rate), 'of take-home', rate < 0 ? 'bad' : '', '#/budget')}
+            ${UI.kpi('House Fund', S.fmtPct(housePct, 0), S.fmt$(houseGoal ? houseGoal.saved : 0, 0) + ' of ' + S.fmt$(houseGoal ? houseGoal.target : 0, 0), null, '#/house')}
+            ${UI.kpi('Wedding Left', S.fmt$(wedding, 0), 'through ' + S.fmtDate(S.data.wedding.date), null, '#/wedding')}
           </div>
         </section>
 
@@ -209,50 +209,13 @@
     }));
   };
 
-  function kpi(label, value, sub, tone, href) {
-    const tag = href ? 'a' : 'div';
-    return `<${tag} class="kpi${tone ? ' ' + tone : ''}${href ? ' kpi-link' : ''}"${href ? ` href="${href}"` : ''}>
-      <div class="kpi-label">${label}</div>
-      <div class="kpi-value">${value}</div>
-      <div class="kpi-sub">${sub}</div>
-    </${tag}>`;
-  }
-
   function insightsSection(insights) {
-    if (!insights.length) {
-      return `<section class="card insights-card glance">
-        <div class="card-head"><h2>Insights</h2></div>
-        <div class="insight-item tone-good"><span class="insight-dot" aria-hidden="true"></span>
-          <span class="insight-text">Nothing needs your attention right now — everything's on track.</span></div>
-      </section>`;
-    }
     return `<section class="card insights-card glance">
       <div class="card-head"><h2>Insights</h2></div>
-      <ul class="insight-list">
-        ${insights.map(i => `<li class="insight-item tone-${i.tone}">
-          <a class="insight-row" href="${i.href}">
-            <span class="insight-dot" aria-hidden="true"></span>
-            <span class="insight-text">${App.esc(i.text)}</span>
-            <span class="insight-arrow" aria-hidden="true">›</span>
-          </a>
-          ${i.reviewKey ? `<button class="btn ghost sm insight-action" data-review="${App.esc(i.reviewKey)}">Mark reviewed</button>` : ''}
-        </li>`).join('')}
-      </ul>
+      ${UI.insightList(insights, true)}
     </section>`;
   }
 
-  function miniGoals() {
-    return Store.data.goals.slice(0, 4).map(g => {
-      const m = Store.goalMeta(g);
-      return `<a class="mini-goal" href="#/goals">
-        <div class="mini-goal-bar"><div style="width:${(m.pct * 100).toFixed(1)}%"></div></div>
-        <div class="mini-goal-row">
-          <span>${App.esc(g.name)}</span>
-          <b>${Store.fmt$(g.saved, 0)} / ${Store.fmt$(g.target, 0)}</b>
-        </div>
-      </a>`;
-    }).join('');
-  }
 
   /* Side-by-side: this month's categories vs last month or the 3-month average. */
   function compareSection(month) {
@@ -277,8 +240,6 @@
     if (!rows.length) return '';
     const top = rows.slice(0, 8);
     const tot = rows.reduce((s, r) => ({ now: s.now + r.now, then: s.then + r.then }), { now: 0, then: 0 });
-    const delta = v => v === 0 ? '<span class="muted">—</span>'
-      : `<span class="${v > 0 ? 'neg' : 'pos'}">${v > 0 ? '+' : '−'}${S.fmt$(Math.abs(v), 0)}</span>`;
     const isCurrent = month === S.thisMonth();
     return `<section class="card">
       <div class="card-head"><h2>${S.fmtMonth(month)}${isCurrent ? ' so far' : ''} vs</h2>
@@ -294,13 +255,13 @@
             <td>${App.esc(r.c)}</td>
             <td class="num">${S.fmt$(r.now, 0)}</td>
             <td class="num">${S.fmt$(r.then, 0)}</td>
-            <td class="num">${delta(r.d)}</td>
+            <td class="num">${UI.delta(r.d)}</td>
           </tr>`).join('')}
         </tbody>
         <tfoot><tr><td>Total${rows.length > top.length ? ' (all categories)' : ''}</td>
           <td class="num">${S.fmt$(tot.now, 0)}</td>
           <td class="num">${S.fmt$(tot.then, 0)}</td>
-          <td class="num">${delta(tot.now - tot.then)}</td></tr></tfoot>
+          <td class="num">${UI.delta(tot.now - tot.then)}</td></tr></tfoot>
       </table></div>
       ${isCurrent ? '<p class="help">This month is in progress — deltas compare month-to-date against the full comparison period.</p>' : ''}
     </section>`;

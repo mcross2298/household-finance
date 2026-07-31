@@ -40,13 +40,13 @@
         <section class="card card-navy summary-hero">
           <div class="report-kicker">Financial health · ${S.fmtMonth(month)}</div>
           <div class="kpi-grid">
-            ${kpi('Net Worth', nwLatest ? S.fmt$(nwLatest.net, 0) : '—',
+            ${UI.kpi('Net Worth', nwLatest ? S.fmt$(nwLatest.net, 0) : '—',
               nwLatest && nwPrev ? (nwLatest.net >= nwPrev.net ? '+' : '−') + S.fmt$(Math.abs(nwLatest.net - nwPrev.net), 0) + ' vs last snapshot'
                 : nwLatest ? 'as of ' + S.fmtMonth(nwLatest.ym) : 'no balance snapshots yet',
               null, '#/networth')}
-            ${kpi('Monthly Surplus', S.fmt$(surplus, 0), 'income − budget', surplus < 0 ? 'bad' : 'gold', '#/budget')}
-            ${kpi('Savings Rate', S.fmtPct(rate), 'of take-home', rate < 0 ? 'bad' : '', '#/budget')}
-            ${kpi('Safe to Spend', S.fmt$(sts.safe, 0), 'rest of ' + S.fmtMonth(month), sts.safe < 0 ? 'bad' : '', `#/transactions?month=${month}`)}
+            ${UI.kpi('Monthly Surplus', S.fmt$(surplus, 0), 'income − budget', surplus < 0 ? 'bad' : 'gold', '#/budget')}
+            ${UI.kpi('Savings Rate', S.fmtPct(rate), 'of take-home', rate < 0 ? 'bad' : '', '#/budget')}
+            ${UI.kpi('Safe to Spend', S.fmt$(sts.safe, 0), 'rest of ' + S.fmtMonth(month), sts.safe < 0 ? 'bad' : '', `#/transactions?month=${month}`)}
           </div>
         </section>
 
@@ -68,28 +68,13 @@
           </section>
           <section class="card">
             <div class="card-head"><h2>Goals</h2><span class="card-note">${S.fmtPct(progress.pct, 0)} funded overall</span></div>
-            <div class="mini-goals">${S.data.goals.slice(0, 4).map(g => {
-              const m = S.goalMeta(g);
-              return `<a class="mini-goal" href="#/goals">
-                <div class="mini-goal-bar"><div style="width:${(m.pct * 100).toFixed(1)}%"></div></div>
-                <div class="mini-goal-row"><span>${App.esc(g.name)}</span><b>${S.fmt$(g.saved, 0)} / ${S.fmt$(g.target, 0)}</b></div>
-              </a>`;
-            }).join('') || '<p class="empty">No goals set up yet.</p>'}</div>
+            <div class="mini-goals">${UI.miniGoals(S.data.goals) || UI.empty('No goals set up yet.', '<a href="#/goals">Add your first goal →</a>')}</div>
           </section>
         </div>
 
-        <section class="card ${insights.length ? 'insights-card' : ''}">
+        <section class="card insights-card">
           <div class="card-head"><h2>What needs attention</h2></div>
-          ${insights.length ? `<ul class="insight-list">
-            ${insights.map(i => `<li class="insight-item tone-${i.tone}">
-              <a class="insight-row" href="${i.href}">
-                <span class="insight-dot" aria-hidden="true"></span>
-                <span class="insight-text">${App.esc(i.text)}</span>
-                <span class="insight-arrow" aria-hidden="true">›</span>
-              </a>
-            </li>`).join('')}
-          </ul>` : `<div class="insight-item tone-good"><span class="insight-dot" aria-hidden="true"></span>
-            <span class="insight-text">Nothing needs your attention right now — everything's on track.</span></div>`}
+          ${UI.insightList(insights)}
         </section>
 
         <div class="two-col">
@@ -136,15 +121,6 @@
     const tourBtn = root.querySelector('#summary-tour');
     if (tourBtn) tourBtn.addEventListener('click', () => { if (window.Tour) Tour.open(0); });
   };
-
-  function kpi(label, value, sub, tone, href) {
-    const tag = href ? 'a' : 'div';
-    return `<${tag} class="kpi${tone ? ' ' + tone : ''}${href ? ' kpi-link' : ''}"${href ? ` href="${href}"` : ''}>
-      <div class="kpi-label">${label}</div>
-      <div class="kpi-value">${value}</div>
-      <div class="kpi-sub">${sub}</div>
-    </${tag}>`;
-  }
 
   /* Ported from the former standalone Plan hub (js/views/plan.js, removed —
      see CLAUDE.md). Tiles are generated from the Features registry so titles,

@@ -85,7 +85,7 @@
   function categoryBars(container, items, onClick, pace) {
     container.innerHTML = '';
     if (!items.length) { container.innerHTML = '<p class="empty">No spending recorded for this month yet.</p>'; return; }
-    const rowH = 34, labelW = 128, valueW = 84, h = items.length * rowH;
+    const rowH = 44, labelW = 128, valueW = 84, h = items.length * rowH;
     const w = Math.max(320, container.clientWidth || 560);
     const plotW = w - labelW - valueW;
     const max = Math.max(...items.map(i => Math.max(i.value, i.budget || 0))) * 1.05 || 1;

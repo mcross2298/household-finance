@@ -87,10 +87,10 @@
         <div class="page-head"><h1>Forecast</h1></div>
 
         <section class="card card-navy stat-band">
-          ${stat('Liquid today', hasSnapshots ? S.fmt$(fc.start, 0) : '—')}
-          ${stat('Monthly net', S.fmt$(fc.income - fc.budget - fc.rothMonthly, 0))}
-          ${stat('In 12 months', hasSnapshots ? S.fmt$(fc.months[fc.months.length - 1].balance, 0) : '—')}
-          ${stat('Watch out', firstBad ? S.fmtMonth(firstBad.ym) : firstWarn ? S.fmtMonth(firstWarn.ym) : 'all clear')}
+          ${UI.stat('Liquid today', hasSnapshots ? S.fmt$(fc.start, 0) : '—')}
+          ${UI.stat('Monthly net', S.fmt$(fc.income - fc.budget - fc.rothMonthly, 0))}
+          ${UI.stat('In 12 months', hasSnapshots ? S.fmt$(fc.months[fc.months.length - 1].balance, 0) : '—')}
+          ${UI.stat('Watch out', firstBad ? S.fmtMonth(firstBad.ym) : firstWarn ? S.fmtMonth(firstWarn.ym) : 'all clear')}
         </section>
 
         ${hasSnapshots ? '' : `<div class="callout warn">📈 The forecast needs a starting point — take your first
@@ -106,7 +106,7 @@
         </section>
 
         <section class="card">
-          <div class="card-head"><h2>Planned one-offs</h2><button class="btn sm" id="pl-add">＋ Add</button></div>
+          <div class="card-head"><h2>Planned one-offs</h2><button class="btn gold" id="pl-add">＋ Add one-off</button></div>
           ${S.data.planned.length ? `<ul class="acct-list">
             ${S.data.planned.slice().sort((a, b) => a.month < b.month ? -1 : 1).map(p => `
               <li class="acct-row" data-planned="${p.id}" role="button" tabindex="0">
@@ -177,9 +177,6 @@
         });
       }));
   };
-
-  const stat = (label, value) =>
-    `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
 
   function saveScenarioModal(goal, trial) {
     const m = App.modal('Save scenario', `

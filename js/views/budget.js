@@ -61,14 +61,14 @@
       <div class="page">
         <div class="page-head">
           <h1>Budget</h1>
-          <button class="btn gold" id="b-add">＋ Add line</button>
+          <button class="btn gold" id="b-add">＋ Add expense</button>
         </div>
 
         <section class="card card-navy stat-band">
-          ${stat('Monthly budget', S.fmt$(total, 0))}
-          ${stat('Annual', S.fmt$(total * 12, 0))}
-          ${stat('Fixed', S.fmt$(byType.Fixed, 0) + ' · ' + S.fmtPct(total ? byType.Fixed / total : 0, 0))}
-          ${stat('Discretionary', S.fmt$(byType.Discretionary, 0) + ' · ' + S.fmtPct(total ? byType.Discretionary / total : 0, 0))}
+          ${UI.stat('Monthly budget', S.fmt$(total, 0))}
+          ${UI.stat('Annual', S.fmt$(total * 12, 0))}
+          ${UI.stat('Fixed', S.fmt$(byType.Fixed, 0) + ' · ' + S.fmtPct(total ? byType.Fixed / total : 0, 0))}
+          ${UI.stat('Discretionary', S.fmt$(byType.Discretionary, 0) + ' · ' + S.fmtPct(total ? byType.Discretionary / total : 0, 0))}
         </section>
 
         <section class="card">
@@ -161,9 +161,6 @@
       App.clearRouteParams();
     }
   };
-
-  const stat = (label, value) =>
-    `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
 
   const PAY_FREQUENCY_LABELS = { weekly: 'Weekly', biweekly: 'Biweekly', semimonthly: 'Semi-monthly', monthly: 'Monthly' };
   function payCycleFields(name, idx) {

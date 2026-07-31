@@ -197,7 +197,7 @@ h3 { font-size: .95rem; font-weight: 700; }
 /* ---------- theme toggle ---------- */
 .theme-toggle {
   background: rgba(255, 255, 255, .08); border: none; border-radius: 9px;
-  width: 36px; height: 36px; flex-shrink: 0;
+  width: 44px; height: 44px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   color: var(--on-navy-nav);
 }
@@ -237,10 +237,13 @@ h3 { font-size: .95rem; font-weight: 700; }
 .card-navy { background: linear-gradient(150deg, var(--navy) 0%, var(--navy-deep) 100%); color: #fff; }
 .card.glance { border-top: 3px solid var(--gold); }
 .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
-.card-head .select { width: auto; min-height: 40px; }
+.card-head .select { width: auto; min-height: 44px; }
 .card-note { font-size: .78rem; color: var(--ink-3); }
 .card-navy .card-note { color: var(--on-navy-2); }
-.card-link { font-size: .82rem; font-weight: 600; text-decoration: none; }
+.card-link {
+  font-size: .82rem; font-weight: 600; text-decoration: none;
+  display: inline-flex; align-items: center; min-height: 44px;
+}
 .empty { color: var(--ink-3); font-size: .9rem; padding: 12px 0; }
 .help { font-size: .84rem; color: var(--ink-2); margin-top: 8px; }
 .muted { color: var(--ink-3); }
@@ -292,7 +295,7 @@ a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 
 
 /* mini goals */
 .mini-goals { display: flex; flex-direction: column; gap: 12px; }
-.mini-goal { display: block; text-decoration: none; color: inherit; border-radius: 8px; padding: 4px; margin: -4px; transition: background .15s; }
+.mini-goal { display: block; text-decoration: none; color: inherit; border-radius: 8px; padding: 6px 4px; margin: -4px; min-height: 44px; transition: background .15s; }
 .mini-goal:hover, .mini-goal:focus-visible { background: var(--bg); }
 .mini-goal-bar { height: 8px; background: var(--blue-card); border-radius: 4px; overflow: hidden; margin-bottom: 4px; }
 .mini-goal-bar div { height: 100%; background: var(--gold-ink); border-radius: 4px; }
@@ -361,8 +364,8 @@ a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 
 .btn.ghost:hover { background: var(--bg); }
 .btn.danger { background: var(--bad); color: #fff; }
 .btn.danger.ghost { background: transparent; color: var(--bad-ink); border: 1.5px solid var(--bad-line); }
-.btn.sm { min-height: 34px; padding: 0 12px; font-size: .8rem; flex-shrink: 0; }
-.btn.slim { min-height: 38px; padding: 0 14px; font-size: .84rem; }
+.btn.sm { min-height: 44px; padding: 0 14px; font-size: .8rem; flex-shrink: 0; }
+.btn.slim { min-height: 44px; padding: 0 16px; font-size: .84rem; }
 .btn-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 .btn-row.center { justify-content: center; }
 .icon-btn { background: none; border: none; font-size: 1.1rem; color: var(--ink-3); min-width: 44px; min-height: 44px; }
@@ -374,12 +377,12 @@ a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 
   background: var(--input-bg); color: var(--ink); font-size: .95rem;
 }
 .input:focus, .select:focus { outline: none; border-color: var(--navy-soft); box-shadow: 0 0 0 3px rgba(42, 74, 128, .15); }
-.input.slim, .select.slim { min-height: 38px; padding: 4px 8px; font-size: .86rem; border-radius: 8px; }
+.input.slim, .select.slim { min-height: 44px; padding: 4px 8px; font-size: .86rem; border-radius: 8px; }
 .input.slim.num { width: 96px; text-align: right; }
 .input.slim.wide { min-width: 180px; }
 textarea.input { min-height: 110px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; }
 label { display: flex; flex-direction: column; gap: 5px; font-size: .8rem; font-weight: 600; color: var(--ink-2); }
-.checkline { flex-direction: row; align-items: center; gap: 8px; font-size: .86rem; }
+.checkline { flex-direction: row; align-items: center; gap: 8px; font-size: .86rem; min-height: 44px; }
 input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--navy); }
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -548,7 +551,7 @@ input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; accent-color
 .c-ring-sub { font-size: 9px; fill: var(--ink-3); }
 .c-hit.clickable { cursor: pointer; }
 path.clickable, button.legend-item.clickable { cursor: pointer; }
-button.legend-item { background: none; border: none; font: inherit; padding: 2px 4px; border-radius: 6px; }
+button.legend-item { background: none; border: none; font: inherit; padding: 2px 8px; min-height: 44px; border-radius: 6px; }
 button.legend-item.clickable:hover, button.legend-item.clickable:focus-visible { background: var(--bg); }
 svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -761,7 +764,7 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 }
 .topbar-search {
   background: rgba(255, 255, 255, .08); border: none; border-radius: 9px;
-  width: 36px; height: 36px; flex-shrink: 0;
+  width: 44px; height: 44px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   color: var(--on-navy-nav);
 }
@@ -789,7 +792,6 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .cal-nav { display: flex; align-items: center; gap: 2px; }
 .cal-nav .icon-btn { font-size: 1.4rem; color: var(--ink-2); }
 .cal-month { font-size: .95rem; min-width: 88px; text-align: center; font-variant-numeric: tabular-nums; }
-.stat-value.bad { color: var(--on-navy-bad); }
 
 .cal-day { display: grid; grid-template-columns: 52px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .cal-day:last-child { border-bottom: 0; }
@@ -823,7 +825,8 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .pill.plain { background: var(--track); color: var(--ink-3); }
 
 /* ---------- spending heatmap ---------- */
-.heatmap-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.heatmap-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.heatmap-cell { min-height: 44px; }
 .heatmap-dow { text-align: center; font-size: .68rem; font-weight: 700; color: var(--ink-3); padding-bottom: 4px; }
 .heatmap-cell {
   aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
@@ -933,6 +936,16 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .feature-ico { flex-shrink: 0; color: var(--brand-ink); margin-top: 1px; }
 .feature-title { font-weight: 700; font-size: .92rem; }
 .feature-blurb { font-size: .8rem; color: var(--ink-2); margin-top: 2px; }
+
+/* Row bodies — these were referenced from markup but never given the
+   min-width:0 that lets their long text ellipsize instead of pushing the
+   trailing amount off the row. */
+.acct-main, .batch-main, .budget-main, .cal-day-body, .plan-body, .tx-main { min-width: 0; }
+.hero-progress-ring, .hero-progress-text { flex-shrink: 0; }
+.heatmap-day { pointer-events: none; }
+
+/* The centre tab of the bottom nav is the one-tap import target. */
+.nav-import .nav-ico.big { color: var(--gold); }
 
 /* ---------- Quick Tour ---------- */
 .tour-step { text-align: center; padding: 6px 0 4px; }

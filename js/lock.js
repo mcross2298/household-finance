@@ -137,7 +137,7 @@
           <div class="lock-title">${esc(APP_NAME)} is locked</div>
           <div class="lock-sub">Enter your PIN to continue.</div>
           <form id="lock-pin-form" autocomplete="off">
-            <label for="lock-pin-input" class="sr-only" style="position:absolute;left:-9999px;">PIN</label>
+            <label for="lock-pin-input" class="sr-only">PIN</label>
             <input class="input lock-pin" id="lock-pin-input" type="password" inputmode="numeric"
               pattern="[0-9]*" minlength="4" maxlength="8" placeholder="••••" autofocus
               aria-label="PIN">

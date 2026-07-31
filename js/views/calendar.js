@@ -56,10 +56,10 @@
         ${App.exportBanner()}
 
         <section class="card card-navy stat-band">
-          ${stat('Due this week', dueSoon.length ? S.fmt$(dueSoon.reduce((s, i) => s + i.amount, 0), 0) + ' · ' + dueSoon.length : '—')}
-          ${stat('Overdue', overdue.length ? String(overdue.length) : 'none', overdue.length ? 'bad' : '')}
-          ${stat('Posted', posted.length + ' of ' + postable.length)}
-          ${stat('Month total', S.fmt$(items.reduce((s, i) => s + i.amount, 0), 0))}
+          ${UI.stat('Due this week', dueSoon.length ? S.fmt$(dueSoon.reduce((s, i) => s + i.amount, 0), 0) + ' · ' + dueSoon.length : '—')}
+          ${UI.stat('Overdue', overdue.length ? String(overdue.length) : 'none', overdue.length ? 'bad' : '')}
+          ${UI.stat('Posted', posted.length + ' of ' + postable.length)}
+          ${UI.stat('Month total', S.fmt$(items.reduce((s, i) => s + i.amount, 0), 0))}
         </section>
 
         <section class="card">
@@ -181,9 +181,6 @@
     App.render();
     App.toast('Marked "' + b.name + '" paid');
   }
-
-  const stat = (label, value, tone) =>
-    `<div class="stat"><div class="stat-label">${label}</div><div class="stat-value${tone ? ' ' + tone : ''}">${value}</div></div>`;
 
   /* Day-by-day spend intensity for the displayed month — companion to the
      bill schedule above: that answers "what's due," this answers "which
