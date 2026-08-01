@@ -46,9 +46,12 @@ which before doing anything else:
     member roster — Cross-Household- has no equivalent file, since it uses a
     fixed two-person `WHO` array instead; see that repo's own CLAUDE.md)
   - `03-budget.js` — budget/income/goals/house/wedding/insights, safe-to-spend
-  - `04-paycycles.js` — paydays & which paycheck funds a bill (this repo has
-    no rule-based paycheck-*allocation* engine or Direct Deposit screen — see
-    below)
+  - `04-paycycles.js` — paydays, and `paycheckAllocations(ym)` groups a
+    month's due-dated Fixed budget lines by the paycheck that funds them (used
+    by the Bill Calendar's "which paycheck covers this" indicator). This repo
+    has no *editable, rule-based* paycheck-allocation engine or Direct Deposit
+    screen — see below — but it does already group bills by paycheck, so
+    don't describe this repo as unable to do that at all.
   - `05-transactions.js` — CSV import/export & merchant intelligence
   - `06-calendar.js` — bill calendar, reminders & month-end close
   - `07-networth.js` — net worth, debt payoff, forecast, import batches
@@ -77,6 +80,15 @@ which before doing anything else:
 - `js/app.js` — hash-based router, modals, toasts, global search.
 - `js/charts.js` — dependency-free inline-SVG charts (bars, donut, trend,
   rings). No charting library.
+- `js/ui.js` — shared view-kit (`stat`, `kpi`, `delta`, `insightList`, etc.)
+  factored out so views don't each hand-roll the same markup; several view
+  files depend on it.
+- `js/lock.js` — optional app lock: PIN + WebAuthn (Face ID/Touch ID) gate
+  with an idle timeout and attempt cooldown, surfaced from the Export &
+  Backup screen's Privacy & Lock card. It's a UI gate, not encryption —
+  `localStorage` is unchanged either way — and has no bypass for a forgotten
+  PIN besides restoring a JSON backup, so its config lives in its own
+  `localStorage` key untouched by `Store.reset()`/`Store.startFresh()`.
 - `sw.js` / `manifest.json` — PWA offline shell + install metadata.
 
 ## Executive Summary & Quick Tour
@@ -133,6 +145,13 @@ UI/UX-visible change without checking whether either surface needs a touch.
 
 ## Conventions
 
+- **Pre-implementation workflow:** for a task that produces an artifact (a
+  design doc, an audit, a proposal) and a roadmap of the work to do, that
+  artifact + roadmap is sufficient evidence and direction to proceed straight
+  to code — no separate written summary step is required first. (This is
+  about the *development* workflow, distinct from this app's own Executive
+  Summary *screen* described above, which is a shipped UI feature, not a
+  process step.)
 - No build tooling — don't introduce one for a small change. If a task seems
   to need bundling/transpiling, that's a sign to reconsider the approach.
 - No comments unless something is genuinely non-obvious (a workaround, a
@@ -147,8 +166,13 @@ UI/UX-visible change without checking whether either surface needs a touch.
   confirm all assertions still pass — the same suite runs headlessly in CI
   (`.github/workflows/tests.yml`, via `scripts/run-tests.mjs`) on every push
   and PR, so a broken assertion is a red check, not just a missed manual step.
-  That workflow also runs `scripts/check-doc-drift.mjs`, which fails CI if a
-  doc's CSV header or category list has drifted from `js/store/00-state.js`'s
+  That workflow runs four jobs total: `money-math` (`scripts/run-tests.mjs`);
+  `token-drift` (`scripts/check-token-drift.mjs`), which fails if a raw hex
+  color slipped in instead of a themed design token; `a11y`
+  (`scripts/check-a11y.mjs`), which checks contrast and 48px touch targets
+  across every route in both light and dark themes; and `doc-drift`
+  (`scripts/check-doc-drift.mjs`), which fails CI if a doc's CSV header or
+  category list has drifted from `js/store/00-state.js`'s
   `CSV_HEADER`/`CATEGORIES` — the actual single source of truth for that
   contract.
 
@@ -157,3 +181,11 @@ UI/UX-visible change without checking whether either surface needs a touch.
 - `README.md` — user-facing product overview, screens, CSV schema, privacy.
 - `SETUP.md` — the GitHub + Cloudflare hosting walkthrough for someone who has
   never used either.
+- `MIGRATION.md`, `STORAGE.md`, `SUPABASE.md` — a **drafted-but-unshipped**
+  cloud-sync direction: a "Cloud Sync" card on Export & Backup, magic-link
+  auth, and a `households`/`household_members`/`household_state`/
+  `state_snapshots` schema. `SUPABASE.md` self-labels as draft. Nothing in
+  `js/` implements any of this yet — no `supabase/` directory, no client
+  code, no "Cloud Sync" string anywhere in the app — so don't treat these as
+  describing current behavior. They're the design work behind a future sync
+  feature, not documentation of one that exists.

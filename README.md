@@ -61,17 +61,19 @@ a couple, or a few roommates:
 | Screen | What it does |
 |---|---|
 | **Dashboard** | The overview: a **Safe to Spend** headline (budget − spent − upcoming fixed bills), an overall progress ring, an insights feed (over budget, category trends, subscription price creep, unusually large transactions, goals outpacing surplus, house plan pace, bills due, milestones), live KPIs, a budget meter with a **day-of-month pace marker**, a **month comparison** table, spend by category / person, and a 12-month trend. Every module is a drill-down |
+| **Executive Summary** | The one-page financial-health snapshot — net worth, this month vs. budget, goals, insights, debt, and wedding at a glance — plus an "app features" grid covering every screen in this table. First thing shown via the Quick Tour on first-ever open, and reachable any time from the topbar compass icon |
 | **Transactions** | Filter by month, category, person, or search; tap to edit; ＋ to add |
 | **Import** | Drop a **PDF statement** (parsed in-browser), a **CSV file**, or paste CSV. Learned merchant **rules auto-categorize** rows, recurring bills inherit their budget line's category, fuzzy **duplicate flagging**, and a full review before anything is saved. Home of the editable **Rules** panel and **Recent imports** with one-tap undo |
 | **Budget** | System of record for recurring expenses, take-home income, and household members. Shared lines split evenly; fixed lines show **✓ posted** when the matching transaction lands; discretionary lines show month-to-date actuals. Lines can carry a **due day** for the Bill Calendar |
-| **Bill Calendar** | The month's bills laid out by due date — posted ✓ / due soon / overdue, auto-checked when the matching transaction posts. Opt-in **local reminders** and a guided **month-end close** |
+| **Bill Calendar** | The month's bills laid out by due date — posted ✓ / due soon / overdue, auto-checked when the matching transaction posts, with **policy/contract renewal tracking** and a marker for **which paycheck covers each bill**. Opt-in **local reminders** and a guided **month-end close** |
 | **Savings Goals** | Progress rings, months-to-goal, projected dates, and an affordability check against monthly surplus |
 | **House Plan** | Interactive affordability model — price scenarios, live PITI, % of take-home, cash to close, ready-by date vs target |
 | **Investments** | Per-member Roth IRA tracker (monthly-to-max) + a high-yield savings 12/24-month projection |
 | **Wedding Payoff** | A vendor payoff checklist through an event date (rename to fit any big one-time savings goal) |
-| **Net Worth** | Accounts registry with a one-modal monthly **balance snapshot**, a net-worth trend line, and **debt payoff** projections with an extra-payment what-if slider |
+| **Net Worth** | Accounts registry with a one-modal monthly **balance snapshot** and a net-worth trend line |
+| **Debt Payoff Plan** | Compare snowball vs. avalanche payoff strategies across current debts — payoff dates, interest remaining, and an extra-payment what-if slider |
 | **Forecast** | A 12-month **liquid-cash projection** (income − budget − Roth − planned one-offs), tight months flagged before they arrive, plus a goal-contribution what-if slider |
-| **Export & Backup** | One-tap CSV, full JSON backup/restore, and the **Start fresh** / demo reset controls |
+| **Export & Backup** | One-tap CSV, full JSON backup/restore, the **Start fresh** / demo reset controls, and the **Privacy & Lock** PIN/biometric app gate |
 
 ## CSV export schema
 
@@ -109,6 +111,12 @@ that hosted copy still contains **none** of your data — your figures only ever
 exist in the browser where you entered them. Back up (JSON) before clearing
 browser data or switching devices.
 
+**App Lock:** the *Export & Backup* screen's *Privacy & Lock* card can gate
+the app itself behind a PIN (and Face ID/Touch ID where the device supports
+it) — useful if the app is installed on a shared device. It's a lock on the
+door, not encryption: `localStorage` data is unchanged either way, and
+there's no bypass for a forgotten PIN besides restoring a JSON backup.
+
 **No backend is needed for storage or persistence** — `localStorage` already
 handles both, and adding a server wouldn't make the app more offline-capable or
 private. The one thing a backend *would* buy you is automatic sync between two
@@ -130,6 +138,10 @@ js/store/*.js       data layer, split by domain (load order matters — see CLAU
 js/icons.js         inline SVG icon set
 js/theme.js         light/dark toggle
 js/charts.js        dependency-free SVG charts (bars, donut, trend, rings)
+js/ui.js            shared view-kit (stat tiles, KPIs, deltas, empty states) used across views
+js/lock.js          optional PIN/biometric app lock — UI gate, not encryption
+js/features.js      registry of every screen; feeds the Quick Tour and Executive Summary
+js/tour.js          first-run Quick Tour walkthrough over js/features.js
 js/app.js           router, modals, toasts, global search
 js/views/*.js       one module per screen
 sw.js               offline cache
