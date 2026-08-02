@@ -190,6 +190,24 @@
         reviewKey: s.key
       });
     }
+    // A missed charge is ambiguous (canceled on purpose? card declined?
+    // just running a little late?) so it's framed as a question, not an
+    // alarm. A doubled charge is the classic billing-error shape and gets
+    // the louder tone accordingly.
+    for (const m of recurringSeries().filter(s => s.status === 'missed').slice(0, 2)) {
+      out.push({
+        tone: 'info',
+        text: `${m.merchant} usually charges around ${fmtDate(m.nextExpected)} — hasn't shown up. Still active?`,
+        href: txHref({ q: m.merchant })
+      });
+    }
+    for (const d of recurringSeries().filter(s => s.status === 'doubled').slice(0, 2)) {
+      out.push({
+        tone: 'warn',
+        text: `${d.merchant} charged twice close together — ${fmt$(d.lastAmount, 2)} on ${fmtDate(d.lastDate)}. Worth checking for a duplicate.`,
+        href: txHref({ q: d.merchant })
+      });
+    }
     const u = unusualTx(month)[0];
     if (u) {
       out.push({
@@ -385,61 +403,40 @@
     return out.sort((a, b) => (b.projected - b.avg) - (a.projected - a.avg));
   }
 
-  /* Subscription price creep: a merchant that posts once a month at a STABLE
-     price which then jumps. The stable-price requirement (two matching months
-     before the increase) keeps once-a-month restaurant visits from being
-     mistaken for subscriptions. */
+  /* Subscription price creep: a monthly series whose latest charge jumped
+     above its own historical price. Derived from recurringSeries() — the one
+     place recurrence gets detected — rather than re-deriving it here from
+     scratch. The threshold ($1 AND 3%, increase only) is priceCreeps' own
+     specific bar, deliberately stricter than the general 'price-changed'
+     status recurringSeries() computes for the calendar-overlay and
+     missed/doubled insights, so re-applied explicitly rather than trusting
+     that shared, looser status. expectedAmount is the mode across every
+     charge but the latest, which is a strictly more robust "was this stable"
+     signal than the old two-months-back-to-back check it replaces — a single
+     earlier blip no longer defeats detection of a real, later jump. */
   function priceCreeps() {
-    const byKey = {};
-    for (const t of data.transactions) {
-      const key = merchantKey(t.description);
-      if (!key) continue;
-      const ym = t.date.slice(0, 7);
-      (byKey[key] = byKey[key] || {})[ym] = (byKey[key][ym] || []).concat(+t.amount || 0);
-    }
-    const out = [];
-    for (const key in byKey) {
-      const months = Object.keys(byKey[key]).sort();
-      if (months.length < 3) continue;
-      const [m1, m2, m3] = months.slice(-3);
-      const a = byKey[key][m1], b = byKey[key][m2], c = byKey[key][m3];
-      if (a.length !== 1 || b.length !== 1 || c.length !== 1) continue; // once-a-month charges only
-      const stable = Math.abs(a[0] - b[0]) <= Math.max(0.5, b[0] * 0.01);
-      if (stable && c[0] - b[0] >= 1 && c[0] >= b[0] * 1.03) {
-        out.push({ merchant: prettyMerchant(key), from: b[0], to: c[0] });
-      }
-    }
-    return out.sort((x, y) => (y.to - y.from) - (x.to - x.from));
+    return recurringSeries()
+      .filter(s => s.cadence === 'monthly'
+        && s.lastAmount - s.expectedAmount >= 1
+        && s.lastAmount >= s.expectedAmount * 1.03)
+      .map(s => ({ merchant: s.merchant, from: s.expectedAmount, to: s.lastAmount }))
+      .sort((x, y) => (y.to - y.from) - (x.to - x.from));
   }
 
-  /* Subscriptions that have charged the same stable price for 6+ straight
-     months — not a problem like priceCreeps, just old enough to deserve an
-     occasional "still worth it?" glance instead of renewing silently forever.
-     A merchant drops off the list once reviewed, until it charges again. */
+  /* Subscriptions that have held a stable monthly price for 6+ charges — not
+     a problem like priceCreeps, just old enough to deserve an occasional
+     "still worth it?" glance instead of renewing silently forever. Excludes
+     anything recurringSeries() already flagged as price-changed or doubled
+     (those surface through their own, more specific insights instead). A
+     merchant drops off the list once reviewed, until it charges again. */
   function subscriptionNudges() {
-    const byKey = {};
-    for (const t of data.transactions) {
-      const key = merchantKey(t.description);
-      if (!key) continue;
-      const ym = t.date.slice(0, 7);
-      (byKey[key] = byKey[key] || {})[ym] = (byKey[key][ym] || []).concat(+t.amount || 0);
-    }
     const reviewed = data.subReviewed || {};
-    const out = [];
-    for (const key in byKey) {
-      const months = Object.keys(byKey[key]).sort();
-      if (months.length < 6) continue;
-      const last6 = months.slice(-6);
-      const amounts = last6.map(m => byKey[key][m]);
-      if (amounts.some(a => a.length !== 1)) continue; // once-a-month charges only
-      const vals = amounts.map(a => a[0]);
-      const stable = vals.every(v => Math.abs(v - vals[0]) <= Math.max(0.5, vals[0] * 0.01));
-      if (!stable) continue;
-      const lastCharge = months[months.length - 1];
-      if (reviewed[key] && reviewed[key] >= lastCharge) continue;
-      out.push({ key, merchant: prettyMerchant(key), amount: vals[vals.length - 1], months: months.length });
-    }
-    return out.sort((a, b) => b.months - a.months);
+    return recurringSeries()
+      .filter(s => s.cadence === 'monthly' && s.chargeCount >= 6
+        && s.status !== 'price-changed' && s.status !== 'doubled'
+        && !(reviewed[s.key] && reviewed[s.key] >= s.lastDate.slice(0, 7)))
+      .map(s => ({ key: s.key, merchant: s.merchant, amount: s.lastAmount, months: s.chargeCount }))
+      .sort((a, b) => b.months - a.months);
   }
   function markSubscriptionReviewed(key) {
     data.subReviewed = data.subReviewed || {};

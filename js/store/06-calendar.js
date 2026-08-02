@@ -15,6 +15,11 @@
   function dayDiff(fromIso, toIso) {
     return Math.round((new Date(toIso + 'T00:00:00') - new Date(fromIso + 'T00:00:00')) / 86400000);
   }
+  function addDays(iso, n) {
+    const d = new Date(iso + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
 
   /* Everything with a date (or that should have one) in a month: Fixed budget
      lines (due on their dueDay, "undated" until one is set), any budget line
@@ -45,6 +50,27 @@
     for (const v of data.wedding.vendors) {
       if (v.due && v.due.slice(0, 7) === month && (+v.amount || 0) > 0) {
         items.push({ kind: 'wedding', id: v.id, name: v.vendor, amount: +v.amount || 0, due: v.due, posted: !!v.paid });
+      }
+    }
+    // Detected recurring charges the household never told the app about,
+    // overlaid alongside the declared schedule above — predictions only
+    // make sense looking forward, so skip this for a month already in the
+    // past. Skipped when the charge already posted this month (nothing to
+    // predict) or when a Fixed line with its own due day already covers it
+    // (that would just duplicate the row above). matchedLine (set only when
+    // a Fixed line matched but has no due day yet) is what the calendar view
+    // uses to offer "set due day from history".
+    if (month >= thisMonth()) {
+      for (const s of recurringSeries()) {
+        if (s.nextExpected.slice(0, 7) !== month) continue;
+        if (s.lastDate.slice(0, 7) === month) continue;
+        const line = matchBudgetLine({ description: s.merchant, amount: s.expectedAmount, category: '' });
+        if (line && line.type === 'Fixed' && line.dueDay) continue;
+        items.push({
+          kind: 'detected', id: s.key, name: s.merchant, amount: s.expectedAmount,
+          due: s.nextExpected, posted: false, section: null,
+          matchedLine: line && line.type === 'Fixed' ? line.id : null
+        });
       }
     }
     for (const it of items) {

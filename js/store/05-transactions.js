@@ -246,6 +246,74 @@
     return out;
   }
 
+  /* ---------- recurring-series detector ---------- */
+
+  /* One derived model of "what repeats" — never persisted, always recomputed
+     (same philosophy as forecastScenarios), so price-creep detection,
+     subscription nudges, and the Bill Calendar's "detected" overlay all read
+     from the same place instead of each rediscovering recurrence from
+     scratch. avg-delta cadence classification (rather than a strict
+     one-per-calendar-month bucket) is deliberately tolerant of a short
+     early/late month here or there, while still landing outside every
+     bucket — and therefore yielding no series at all — for a merchant with
+     no real cadence, like an occasional restaurant visit. */
+  const CADENCE_DAYS = { weekly: 7, biweekly: 14, monthly: 30 };
+  function classifyCadence(avgDeltaDays) {
+    if (avgDeltaDays >= 5 && avgDeltaDays <= 9) return 'weekly';
+    if (avgDeltaDays >= 10 && avgDeltaDays <= 19) return 'biweekly';
+    if (avgDeltaDays >= 24 && avgDeltaDays <= 40) return 'monthly';
+    return null;
+  }
+  function recurringSeries() {
+    const byKey = {};
+    for (const t of data.transactions) {
+      const key = merchantKey(t.description);
+      if (!key) continue;
+      (byKey[key] = byKey[key] || []).push({ date: t.date, amount: +t.amount || 0 });
+    }
+    const today = todayIso();
+    const out = [];
+    for (const key in byKey) {
+      const charges = byKey[key].slice().sort((a, b) => a.date < b.date ? -1 : (a.date > b.date ? 1 : 0));
+      if (charges.length < 3) continue;
+      const first = charges[0].date, last = charges[charges.length - 1].date;
+      const spanDays = dayDiff(first, last);
+      if (spanDays <= 0) continue;
+      const avgDelta = spanDays / (charges.length - 1);
+      const cadence = classifyCadence(avgDelta);
+      if (!cadence) continue;
+      const cadenceDays = CADENCE_DAYS[cadence];
+
+      // The "expected" price is the most common amount among every charge
+      // BUT the latest one, so a genuine price change doesn't get folded
+      // into its own baseline the moment it happens.
+      const priorCents = charges.slice(0, -1).map(c => Math.round(c.amount * 100));
+      const counts = {};
+      for (const c of priorCents) counts[c] = (counts[c] || 0) + 1;
+      let modeCents = priorCents[priorCents.length - 1], modeCount = 0;
+      for (const c in counts) if (counts[c] > modeCount) { modeCount = counts[c]; modeCents = +c; }
+      const expectedAmount = modeCents / 100;
+
+      const lastCharge = charges[charges.length - 1];
+      const prevCharge = charges[charges.length - 2];
+      const lastDelta = dayDiff(prevCharge.date, lastCharge.date);
+      const daysSinceLast = dayDiff(lastCharge.date, today);
+
+      let status = 'ok';
+      if (lastDelta < cadenceDays * 0.5) status = 'doubled';
+      else if (daysSinceLast > cadenceDays * 1.5) status = 'missed';
+      else if (Math.abs(lastCharge.amount - expectedAmount) > Math.max(0.5, expectedAmount * 0.03)) status = 'price-changed';
+
+      out.push({
+        key, merchant: prettyMerchant(key), cadence, cadenceDays,
+        expectedAmount, lastAmount: lastCharge.amount, lastDate: lastCharge.date,
+        nextExpected: addDays(lastCharge.date, cadenceDays),
+        chargeCount: charges.length, status
+      });
+    }
+    return out.sort((a, b) => a.merchant < b.merchant ? -1 : (a.merchant > b.merchant ? 1 : 0));
+  }
+
   /* A Fixed line flagged cashPay never arrives on a statement (cash, check,
      autopay with no card trail) — matchBudgetLine can never see a transaction
      for it, so it would sit "not posted" on the Budget/Calendar screens

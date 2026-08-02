@@ -18,7 +18,7 @@
     saveForecastScenario, deleteForecastScenario,
     parseCSV, exportCSV, csvEscape,
     monthPace, safeToSpend, avgSpendByCategory, categoryTrends, priceCreeps, unusualTx,
-    subscriptionNudges, markSubscriptionReviewed,
+    subscriptionNudges, markSubscriptionReviewed, recurringSeries,
     prevMonth, nextMonth, daysInMonth, monthSchedule,
     dueSoonItems, dueForReminder, markReminded, dueInsightNudges, markInsightsNudged,
     closeChecklist, monthSummary, closeMonth,

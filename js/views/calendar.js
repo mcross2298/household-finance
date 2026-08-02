@@ -139,6 +139,15 @@
         const b = S.data.budget.find(x => x.id === li.dataset.calRenewal);
         if (b) App.go('budget', { section: b.section });
       }));
+    root.querySelectorAll('[data-cal-detected]').forEach(li => {
+      const item = items.find(x => x.kind === 'detected' && x.id === li.dataset.calDetected);
+      if (!item) return;
+      li.addEventListener('click', () => {
+        const line = item.matchedLine && S.data.budget.find(x => x.id === item.matchedLine);
+        if (line) return dueDayModal(line, +item.due.slice(8, 10));
+        App.go('transactions', { q: item.name });
+      });
+    });
 
     wireReminders(root);
 
@@ -226,17 +235,20 @@
     const pill = label ? `<span class="pill ${tone || 'plain'}">${label}</span>` : '';
     const attr = i.kind === 'bill' ? `data-cal-bill="${i.id}"`
       : i.kind === 'renewal' ? `data-cal-renewal="${i.id}"`
+      : i.kind === 'detected' ? `data-cal-detected="${i.id}"`
       : `data-cal-wedding="${i.id}"`;
     const fp = fundedBy && fundedBy[i.id];
     const fundedMeta = fp && !i.posted ? ` · funded by ${App.esc(fp.person)}'s ${Store.fmtDate(fp.date)} check` : '';
     const meta = i.posted && i.tx ? 'posted ' + Store.fmtDate(i.tx.date)
       : i.kind === 'wedding' && i.posted ? 'paid'
       : i.kind === 'renewal' ? 'renews ' + Store.fmtDate(i.due)
+      : i.kind === 'detected' ? 'expected around ' + Store.fmtDate(i.due) + (i.matchedLine ? ' · tap to set a due day' : ' · tap to review')
       : i.due ? 'due ' + Store.fmtDate(i.due) + fundedMeta
       : 'tap to set a due day';
     const tag = i.kind === 'wedding' ? ' <span class="cal-tag">wedding</span>'
-      : i.kind === 'renewal' ? ' <span class="cal-tag">renewal</span>' : '';
-    return `<li class="cal-row status-${i.status}" ${attr} role="button" tabindex="0">
+      : i.kind === 'renewal' ? ' <span class="cal-tag">renewal</span>'
+      : i.kind === 'detected' ? ' <span class="cal-tag detected">detected</span>' : '';
+    return `<li class="cal-row status-${i.status}${i.kind === 'detected' ? ' cal-detected' : ''}" ${attr} role="button" tabindex="0">
       <div class="cal-row-main">
         <span class="cal-row-name">${App.esc(i.name)}${tag}</span>
         <span class="cal-row-meta">${meta}</span>
@@ -247,14 +259,22 @@
   }
 
   /* ---------- due day editor ---------- */
-  function dueDayModal(b) {
+  function ordinal(n) {
+    if (n % 100 >= 11 && n % 100 <= 13) return n + 'th';
+    return n + (['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+  }
+  /* suggestedDay (from a detected recurring series with no matching due day
+     yet) only affects the initial dropdown selection — it's a starting
+     point to confirm or change, never written until Save is tapped. */
+  function dueDayModal(b, suggestedDay) {
     const m = App.modal('Due day — ' + App.esc(b.name), `
       <p class="help">Which day of the month is “${App.esc(b.name)}” (${Store.fmt$(b.monthly, 0)}/mo) due?
-         Months shorter than the chosen day use their last day.</p>
+         Months shorter than the chosen day use their last day.
+         ${!b.dueDay && suggestedDay ? ` Its transaction history suggests around the ${ordinal(suggestedDay)} — already picked below, change it if that's off.` : ''}</p>
       <label>Due day
         <select class="select" id="dd-day">
           <option value="">— none —</option>
-          ${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}"${+b.dueDay === i + 1 ? ' selected' : ''}>${i + 1}</option>`).join('')}
+          ${Array.from({ length: 31 }, (_, i) => `<option value="${i + 1}"${(b.dueDay ? +b.dueDay === i + 1 : suggestedDay === i + 1) ? ' selected' : ''}>${i + 1}</option>`).join('')}
         </select>
       </label>
       <div class="btn-row">

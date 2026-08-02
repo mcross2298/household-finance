@@ -18,7 +18,7 @@
     { id: 'budget', route: 'budget', icon: 'grid', title: 'Budget',
       blurb: 'Recurring income and spending lines, split across the household or Shared.' },
     { id: 'calendar', route: 'calendar', icon: 'calendar', title: 'Bill Calendar',
-      blurb: 'Upcoming bills with due dates, auto-pay tracking, policy and contract renewals, bill and insight reminders, and which paycheck covers each one.' },
+      blurb: 'Upcoming bills with due dates, auto-pay tracking, policy and contract renewals, bill and insight reminders, which paycheck covers each one — plus recurring charges it detects from history that you never declared.' },
     { id: 'goals', route: 'goals', icon: 'target', title: 'Savings Goals',
       blurb: 'Track progress toward the house, wedding, and any other savings target.' },
     { id: 'house', route: 'house', icon: 'house', title: 'House Plan',

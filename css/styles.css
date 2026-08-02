@@ -876,6 +876,19 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   font-size: .62rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
   color: var(--gold-ink); background: var(--dup-bg); border-radius: 8px; padding: 1px 7px; margin-left: 4px;
 }
+/* Detected recurring charges the household never declared — a full dashed
+   outline (not just the shared bottom-hairline every row already has) marks
+   the row as a prediction, distinct from the solid declared-bill rows
+   around it. */
+.cal-row.cal-detected {
+  border: 1.5px dashed var(--ink-3);
+  border-bottom: 1.5px dashed var(--ink-3);
+  border-radius: 10px;
+  margin: 3px 0;
+  padding: 8px 10px;
+}
+.cal-row.cal-detected .cal-row-name { color: var(--ink-2); }
+.cal-tag.detected { color: var(--ink-3); background: transparent; border: 1px dashed var(--ink-3); }
 .pill.plain { background: var(--track); color: var(--ink-3); }
 
 /* ---------- spending heatmap ---------- */
