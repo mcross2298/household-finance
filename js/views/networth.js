@@ -16,14 +16,28 @@
     const assets = S.data.accounts.filter(a => a.kind === 'asset');
     const debts = S.data.accounts.filter(a => a.kind === 'debt');
 
+    /* An account with no snapshot yet this month, and something rollable to
+       estimate from, gets its estimate shown in place of a stale confirmed
+       figure — with a one-tap confirm that writes it straight into this
+       month's snapshot. Tapping the row itself (for the name/type/edit
+       modal) still works; the confirm button is a separate, smaller target
+       inside it, same pattern as the reminder feed's "Mark reviewed".
+       estimatedBalance() already checks THIS account's own snapshot history
+       (not whether the household happened to snapshot some other account
+       this month), so it's called directly rather than gated on the
+       page-level hasThisMonth, which answers a different question. */
     const acctRow = a => {
       const b = S.latestBalance(a.id);
-      return `<li class="acct-row" data-acct="${a.id}" role="button" tabindex="0">
+      const est = S.estimatedBalance(a.id);
+      const value = est ? est.balance : b;
+      const figure = value == null ? '—' : (est ? '~' : '') + S.fmt$(value, 0);
+      return `<li class="acct-row${est ? ' acct-estimated' : ''}" data-acct="${a.id}" role="button" tabindex="0">
         <div class="acct-main">
-          <span class="acct-name">${App.esc(a.name)}</span>
+          <span class="acct-name">${App.esc(a.name)}${est ? ' <span class="pill plain acct-est-pill">est.</span>' : ''}</span>
           <span class="acct-meta">${App.esc(a.type)} · ${a.owner}${a.kind === 'debt' && a.payment ? ' · ' + S.fmt$(a.payment, 0) + '/mo' : ''}${a.rate ? ' · ' + a.rate + '%' : ''}</span>
         </div>
-        <b class="${a.kind === 'debt' && b > 0 ? 'neg' : ''}">${b == null ? '—' : S.fmt$(b, 0)}</b>
+        ${est ? `<button class="btn ghost sm acct-confirm" data-confirm="${a.id}" data-confirm-amt="${est.balance}">Confirm</button>` : ''}
+        <b class="${est ? 'acct-est-value' : (a.kind === 'debt' && value > 0 ? 'neg' : '')}">${figure}</b>
       </li>`;
     };
 
@@ -109,9 +123,18 @@
     root.querySelector('#acct-add-asset').addEventListener('click', () => acctModal(null, 'asset'));
     root.querySelector('#acct-add-debt').addEventListener('click', () => acctModal(null, 'debt'));
     root.querySelectorAll('[data-acct]').forEach(li =>
-      li.addEventListener('click', () => {
+      li.addEventListener('click', e => {
+        if (e.target.closest('[data-confirm]')) return; // handled below, not the row's edit-modal tap
         const a = S.data.accounts.find(x => x.id === li.dataset.acct);
         if (a) acctModal(a, a.kind);
+      }));
+    root.querySelectorAll('[data-confirm]').forEach(btn =>
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const a = S.data.accounts.find(x => x.id === btn.dataset.confirm);
+        S.saveSnapshot(S.thisMonth(), { [btn.dataset.confirm]: +btn.dataset.confirmAmt });
+        App.render();
+        App.toast((a ? a.name : 'Balance') + ' confirmed — ' + S.fmt$(+btn.dataset.confirmAmt, 0));
       }));
     root.querySelectorAll('[data-extra]').forEach(sl => {
       sl.addEventListener('change', () => {
@@ -135,8 +158,9 @@
       <p class="help">Enter what each account shows right now. Blank keeps the previous value.</p>
       <div class="close-goals">
         ${S.data.accounts.map(a => {
-          const b = S.latestBalance(a.id);
-          return `<label class="close-goal"><span>${App.esc(a.name)}${a.kind === 'debt' ? ' <small>(owed)</small>' : ''}</span>
+          const est = S.estimatedBalance(a.id);
+          const b = est ? est.balance : S.latestBalance(a.id);
+          return `<label class="close-goal"><span>${App.esc(a.name)}${a.kind === 'debt' ? ' <small>(owed)</small>' : ''}${est ? ' <small>(est. below)</small>' : ''}</span>
             <input class="input slim num" type="number" step="1" min="0" data-snap="${a.id}"
               value="${(S.data.snapshots[month] || {})[a.id] != null ? S.data.snapshots[month][a.id] : ''}"
               placeholder="${b == null ? '0' : b}"></label>`;
