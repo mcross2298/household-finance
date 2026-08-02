@@ -245,7 +245,17 @@
           out.push({ tone: 'info', text: `${fmtMonth(firstWarn.ym)} looks tight — projected liquid balance ${fmt$(firstWarn.balance, 0)}.`, href: '#/forecast' });
         }
         if (!data.snapshots[month]) {
-          out.push({ tone: 'info', text: 'Account balances haven’t been updated this month — two minutes keeps net worth honest.', href: '#/networth' });
+          // A household with at least one prior snapshot has something to
+          // roll forward — the ask shrinks from filling out every account to
+          // confirming a number the app already estimated.
+          const hasEstimates = data.accounts.some(a => estimatedBalance(a.id));
+          out.push({
+            tone: 'info',
+            text: hasEstimates
+              ? 'Estimates ready for this month’s balances — confirm in one tap.'
+              : 'Account balances haven’t been updated this month — two minutes keeps net worth honest.',
+            href: '#/networth'
+          });
         }
       }
 

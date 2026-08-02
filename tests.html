@@ -200,6 +200,68 @@
     t('planned one-off ripples to the end', near(base.months[11].balance - after.months[11].balance, 500),
       String(base.months[11].balance - after.months[11].balance));
 
+    /* estimatedBalance — Zero-Entry Net Worth. Dates are relative to the
+       actual run date, not hardcoded, so the suite stays valid regardless of
+       when it runs. */
+    (function () {
+      const iso = d => d.toISOString().slice(0, 10);
+      const monthsAgoYm = n => { const d = new Date(); d.setMonth(d.getMonth() - n); return iso(d).slice(0, 7); };
+
+      // Debt: verified against the amortization formula directly, not
+      // against debtPayoff() — that answers a different question
+      // (months-from-now-to-zero), not "what happened since a dated snapshot".
+      const debtAcct = { id: 'est-debt', name: 'Test Loan', kind: 'debt', type: 'Loan', owner: 'Shared', payment: 300, rate: 6 };
+      S.data.accounts.push(debtAcct);
+      const twoMonthsAgo = monthsAgoYm(2);
+      S.saveSnapshot(twoMonthsAgo, { [debtAcct.id]: 3000 });
+      const di = 0.06 / 12;
+      let expectDebt = 3000;
+      for (let k = 0; k < 2; k++) expectDebt = expectDebt * (1 + di) - 300;
+      const estDebt = S.estimatedBalance(debtAcct.id);
+      t('estimatedBalance amortizes a debt forward from its last snapshot',
+        !!estDebt && near(estDebt.balance, expectDebt, 0.5), JSON.stringify([estDebt, expectDebt]));
+
+      const oneMonthAgo = monthsAgoYm(1);
+      // The demo seed pre-populates a this-month snapshot for every account
+      // (so Net Worth and Forecast have something to show on first open) —
+      // clear it for the accounts under test so "one month stale" is
+      // actually what gets exercised, matching a real household that hasn't
+      // snapshotted yet this month.
+      const clearThisMonth = id => { if (S.data.snapshots[S.thisMonth()]) delete S.data.snapshots[S.thisMonth()][id]; };
+
+      // Savings (the HYSA-type account): verified against the same
+      // deposit + APY formula the function documents using.
+      const savingsAcct = S.data.accounts.find(a => a.name === 'High-Yield Savings');
+      clearThisMonth(savingsAcct.id);
+      S.saveSnapshot(oneMonthAgo, { [savingsAcct.id]: 1000 });
+      const apy = S.data.invest.hysa.apys[1];
+      const expectSavings = 1000 * (1 + apy / 100 / 12) + (+S.data.invest.hysa.deposit || 0);
+      const estSavings = S.estimatedBalance(savingsAcct.id);
+      t('estimatedBalance rolls the HYSA forward by modeled deposit + base APY',
+        !!estSavings && near(estSavings.balance, expectSavings, 0.5), JSON.stringify([estSavings, expectSavings]));
+
+      // Checking: the whole point of factoring liquidCashFlow() out of
+      // forecast() — this cross-checks that estimatedBalance's Checking
+      // branch and forecast()'s own first month agree on the same delta,
+      // rather than two copies of the same formula that could drift apart.
+      const checkingAcct = S.data.accounts.find(a => a.name === 'Joint Checking');
+      clearThisMonth(checkingAcct.id);
+      S.saveSnapshot(oneMonthAgo, { [checkingAcct.id]: 5000 });
+      const fc1 = S.forecast(1);
+      const estChecking = S.estimatedBalance(checkingAcct.id);
+      t('estimatedBalance\'s Checking roll-forward agrees with forecast()\'s own delta',
+        !!estChecking && near(estChecking.balance, 5000 + fc1.months[0].delta, 0.01),
+        JSON.stringify([estChecking, fc1.months[0]]));
+
+      const freshDebt = { id: 'est-debt-fresh', name: 'Fresh Loan', kind: 'debt', type: 'Loan', owner: 'Shared', payment: 100, rate: 5 };
+      S.data.accounts.push(freshDebt);
+      t('estimatedBalance returns null with no prior snapshot', S.estimatedBalance(freshDebt.id) === null);
+
+      const rothAcct2 = S.data.accounts.find(a => a.type === 'Investment');
+      t('estimatedBalance never guesses an Investment account — market performance isn\'t derivable from a deposit amount',
+        S.estimatedBalance(rothAcct2.id) === null);
+    })();
+
     /* CSV round trip */
     const csv = S.exportCSV();
     const rows = S.parseCSV(csv);

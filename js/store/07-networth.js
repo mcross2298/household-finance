@@ -155,30 +155,45 @@
     };
   }
 
-  /* 12-month liquid-cash projection. Start = latest Checking+Savings balances.
-     Each month: + take-home income − recurring budget − Roth contributions
-     (money that leaves liquid for investment) − wedding payments due − planned
-     one-offs. Moving money into savings goals stays liquid (checking → HYSA),
-     so goal contributions are context, not an outflow. */
+  /* Net liquid cash flow for one month: take-home income minus recurring
+     budget, Roth contributions (money that leaves liquid for investment),
+     wedding payments due, and planned one-offs. Moving money into savings
+     goals stays liquid (checking → HYSA), so goal contributions are context,
+     not an outflow. Factored out of forecast() so estimatedBalance() can
+     roll a single checking-type account forward by the exact same math
+     instead of re-deriving it — one definition of "what moves the liquid
+     pool," not two that can quietly drift apart. */
+  function liquidCashFlow(ym, rothMonthly, extraPlanned) {
+    const wedding = data.wedding.vendors.reduce((s, v) =>
+      s + (!v.paid && v.due && v.due.slice(0, 7) === ym ? (+v.amount || 0) : 0), 0);
+    const planned = data.planned.reduce((s, p) =>
+      s + (p.month === ym ? (+p.amount || 0) : 0), 0)
+      + (extraPlanned && extraPlanned.month === ym ? +extraPlanned.amount : 0);
+    const delta = incomeTotal() - budgetTotal() - rothMonthly - wedding - planned;
+    return { wedding, planned, delta };
+  }
+  function activeRothMonthly() {
+    return (data.members || []).reduce((s, n) => s + rothMeta(n).monthlyToMax, 0);
+  }
+
+  /* 12-month liquid-cash projection. Start = latest Checking+Savings balances. */
   function forecast(monthsAhead, opts) {
     opts = opts || {};
     const n = monthsAhead || 12;
     const start = data.accounts
       .filter(a => a.kind === 'asset' && (a.type === 'Checking' || a.type === 'Savings'))
-      .reduce((s, a) => s + (latestBalance(a.id) || 0), 0);
+      .reduce((s, a) => {
+        const est = estimatedBalance(a.id);
+        return s + (est ? est.balance : (latestBalance(a.id) || 0));
+      }, 0);
     const income = incomeTotal();
     const budget = budgetTotal();
-    const rothMonthly = (data.members || []).reduce((s, n) => s + rothMeta(n).monthlyToMax, 0);
+    const rothMonthly = activeRothMonthly();
     const out = [];
     let ym = thisMonth();
     let bal = start;
     for (let k = 0; k < n; k++) {
-      const wedding = data.wedding.vendors.reduce((s, v) =>
-        s + (!v.paid && v.due && v.due.slice(0, 7) === ym ? (+v.amount || 0) : 0), 0);
-      const planned = data.planned.reduce((s, p) =>
-        s + (p.month === ym ? (+p.amount || 0) : 0), 0)
-        + (opts.extraPlanned && opts.extraPlanned.month === ym ? +opts.extraPlanned.amount : 0);
-      const delta = income - budget - rothMonthly - wedding - planned;
+      const { wedding, planned, delta } = liquidCashFlow(ym, rothMonthly, opts.extraPlanned);
       bal += delta;
       out.push({
         ym, delta, balance: bal, wedding, planned,
@@ -187,6 +202,73 @@
       ym = nextMonth(ym);
     }
     return { start, income, budget, rothMonthly, months: out };
+  }
+
+  /* Roll a snapshot forward to estimate today's balance without a fresh
+     manual entry — the monthly snapshot ritual becomes confirm-or-correct
+     instead of typing every account from scratch. Returns null when there's
+     nothing to roll forward from (no prior snapshot) or nothing to roll (the
+     last snapshot already covers the current month). Never persisted —
+     recomputed on every call, same as everything else derived here.
+       - Debt accounts amortize forward with the SAME math debtPayoff() runs
+         to a payoff date, just walked partway instead of all the way to zero.
+       - The HYSA-type Savings account rolls forward by the paycheck engine's
+         own modeled monthly deposit, compounding at its middle ("base") APY
+         scenario — one specific number instead of the 3-scenario spread
+         hysaProjection() shows on the Investments screen.
+       - Other liquid (Checking) accounts roll forward by the same net
+         liquid-cash-flow model forecast() already walks 12 months at a time.
+         A household with more than one Checking account would have its net
+         flow attributed to whichever one is being estimated — the same
+         simplification forecast() already makes by pooling every
+         Checking/Savings balance into one starting figure.
+       - Investment accounts (Roth, etc.) aren't estimated at all: a payroll
+         deposit amount says nothing about market performance, so guessing
+         here would be actively misleading rather than merely stale. */
+  function estimatedBalance(accountId) {
+    const acct = data.accounts.find(a => a.id === accountId);
+    if (!acct) return null;
+    const snapMonths = Object.keys(data.snapshots).filter(m => (data.snapshots[m] || {})[accountId] != null).sort();
+    if (!snapMonths.length) return null;
+    const lastYm = snapMonths[snapMonths.length - 1];
+    const asOfYm = thisMonth();
+    if (asOfYm <= lastYm) return null;
+    const lastBal = +data.snapshots[lastYm][accountId];
+
+    if (acct.kind === 'debt') {
+      const i = (+acct.rate || 0) / 100 / 12;
+      const payment = +acct.payment || 0;
+      let bal = lastBal;
+      for (let ym = nextMonth(lastYm); ym <= asOfYm; ym = nextMonth(ym)) {
+        bal = bal * (1 + i) - payment;
+        if (bal <= 0) { bal = 0; break; }
+      }
+      return { balance: Math.round(bal * 100) / 100, since: lastYm, asOf: asOfYm };
+    }
+    if (acct.type === 'Savings') {
+      // This repo has no rule-based paycheck-split engine (see CLAUDE.md) —
+      // the monthly deposit is a flat figure the household set directly on
+      // Investments, not derived from a dated allocation like
+      // Cross-Household-'s hysaMonthlyDeposit(). Same roll-forward shape,
+      // different source for "how much goes in each month."
+      const apy = (data.invest.hysa.apys && data.invest.hysa.apys[1]) || 0;
+      const monthlyRate = apy / 100 / 12;
+      const monthlyDeposit = +data.invest.hysa.deposit || 0;
+      let bal = lastBal;
+      for (let ym = nextMonth(lastYm); ym <= asOfYm; ym = nextMonth(ym)) {
+        bal = bal * (1 + monthlyRate) + monthlyDeposit;
+      }
+      return { balance: Math.round(bal * 100) / 100, since: lastYm, asOf: asOfYm };
+    }
+    if (acct.type === 'Checking') {
+      const rothMonthly = activeRothMonthly();
+      let bal = lastBal;
+      for (let ym = nextMonth(lastYm); ym <= asOfYm; ym = nextMonth(ym)) {
+        bal += liquidCashFlow(ym, rothMonthly).delta;
+      }
+      return { balance: Math.round(bal * 100) / 100, since: lastYm, asOf: asOfYm };
+    }
+    return null;
   }
 
   /* Import batches: every commit is recorded so a bad import (wrong file, wrong

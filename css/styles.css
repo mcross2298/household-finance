@@ -940,9 +940,18 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 }
 .acct-row:last-child { border-bottom: 0; }
 .acct-row:hover { background: var(--bg); }
+.acct-row .acct-main { flex: 1; }
 .acct-name { font-weight: 600; font-size: .92rem; display: block; }
 .acct-meta { font-size: .74rem; color: var(--ink-3); }
 .acct-row b { font-variant-numeric: tabular-nums; }
+/* Estimated balances — rolled forward from the last confirmed snapshot,
+   not yet confirmed for this month. Secondary ink and a tilde read as
+   "provisional" even before the eye reaches the "est." pill; confirming
+   promotes the row to full-ink actuals (see .kpi-value's count-up for the
+   same "resolves once confirmed" feel elsewhere in the app). */
+.acct-est-pill { font-size: .58rem; padding: 0 5px; vertical-align: 1px; }
+.acct-est-value { color: var(--ink-2); font-weight: 600; }
+.acct-confirm { flex-shrink: 0; }
 
 .payoff { padding: 12px 0; border-bottom: 1px solid var(--line); }
 .payoff:last-of-type { border-bottom: 0; }

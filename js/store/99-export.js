@@ -22,7 +22,7 @@
     prevMonth, nextMonth, daysInMonth, monthSchedule,
     dueSoonItems, dueForReminder, markReminded, dueInsightNudges, markInsightsNudged,
     closeChecklist, monthSummary, closeMonth,
-    balanceAt, latestBalance, netWorthSeries, saveSnapshot, debtPayoff, forecast,
+    balanceAt, latestBalance, netWorthSeries, saveSnapshot, debtPayoff, forecast, estimatedBalance,
     debtStrategies, debtStrategiesSummary, debtPayoffOrder, debtRollupPlan, debtPayoffOrderComparison,
     normalizeMerchant, merchantKey, prettyMerchant,
     ruleFor, suggestRule, learnRule, guessCategory, categorize, likelyDuplicate,
