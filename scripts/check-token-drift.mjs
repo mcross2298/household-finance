@@ -2,7 +2,7 @@
 /* Design-token gate — the same idea as check-doc-drift.mjs, pointed at the
    stylesheet instead of the docs.
 
-   Two rules, both of which were broken before this existed:
+   Three rules, each of which was broken before it existed:
 
    1. Any token used to paint something on a surface that flips with the theme
       must be redefined in BOTH dark blocks. --navy-soft wasn't, so every link
@@ -14,6 +14,12 @@
       deliberately never flips, plus print, which is always on white paper.
       Those get named --on-navy-* / --on-gold tokens instead, so a raw hex
       anywhere else is a real finding rather than noise.
+
+   3. No raw duration in a transition/animation shorthand — same argument as
+      the colors. Six hardcoded values across fourteen declarations is how the
+      app ended up with no shared sense of timing; --motion-* is the scale and
+      js/motion.js reads its durations back out of it, so a literal here also
+      silently desynchronises the JS half.
 
    Exits non-zero with the offending lines. Run: node scripts/check-token-drift.mjs */
 
@@ -28,6 +34,8 @@ const lines = src.split('\n');
    token (--link / --brand-ink carry the flipping half). */
 const THEME_INDEPENDENT = new Set([
   '--gold', '--gold-hover', '--navy', '--navy-soft', '--radius', '--sat', '--sab',
+  '--motion-fast', '--motion-base', '--motion-emphasis', '--motion-slow',
+  '--motion-hold', '--ease-out-quart',
   '--on-navy', '--on-navy-2', '--on-navy-nav', '--on-navy-dim',
   '--on-navy-line', '--on-navy-fill', '--on-navy-fill-hi',
   '--on-navy-bad', '--on-navy-bad-edge', '--on-gold', '--on-solid'
@@ -90,10 +98,23 @@ for (let i = startLine; i < lines.length; i++) {
   errors.push(`${CSS}:${i + 1} raw hex ${hex.join(', ')} on a theme-flipping surface — use a token\n      ${line.trim()}`);
 }
 
+// --- rule 3: no raw duration in a transition/animation outside the tokens ---
+// Keyframe percentages and the token block itself are exempt: the token block
+// is where the literals are supposed to live.
+for (let i = startLine; i < lines.length; i++) {
+  const line = lines[i];
+  if (!/(transition|animation)[^:]*:/.test(line)) continue;
+  const decl = line.slice(line.indexOf(':') + 1);
+  const raw = decl.match(/(?<![\w.-])\d*\.?\d+m?s(?![\w-])/g);
+  if (raw) {
+    errors.push(`${CSS}:${i + 1} raw duration ${raw.join(', ')} — use a --motion-* token\n      ${line.trim()}`);
+  }
+}
+
 if (errors.length) {
   console.error(`\ncheck-token-drift: ${errors.length} problem(s)\n`);
   for (const e of errors) console.error('  • ' + e);
-  console.error('\nSee the comment at the top of scripts/check-token-drift.mjs for why these two rules exist.\n');
+  console.error('\nSee the comment at the top of scripts/check-token-drift.mjs for why these three rules exist.\n');
   process.exit(1);
 }
-console.log('check-token-drift: tokens are themed and no raw hex escaped the token blocks.');
+console.log('check-token-drift: tokens are themed, no raw hex or duration escaped the token blocks.');

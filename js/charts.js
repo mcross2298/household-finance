@@ -42,6 +42,18 @@
     return n;
   }
 
+  /* Entrance helpers. Charts always render at their final geometry — the
+     animation only ever moves a node from an initial style to that already-
+     correct end state, so the SVG the a11y checker (and a print stylesheet)
+     sees is identical either way. */
+  const animates = () => !!(window.Motion && Motion.armed());
+  const stagger = i => (window.Motion ? Motion.stagger(i) : 0);
+  function grow(node, from, i, ms, origin) {
+    if (!window.Motion) return;
+    if (origin) node.style.setProperty('transform-origin', origin);
+    Motion.enter(node, from, stagger(i), ms);
+  }
+
   /* shared tooltip */
   const tip = () => document.getElementById('tooltip');
   function showTip(evt, html) {
@@ -99,7 +111,8 @@
       const lbl = el('text', { x: labelW - 10, y: cy + 4, 'text-anchor': 'end', class: 'c-label' }, svg);
       lbl.textContent = it.label;
       el('rect', { x: labelW, y: cy - 7, width: plotW, height: 14, rx: 4, class: 'c-track' }, svg);
-      el('rect', { x: labelW, y: cy - 7, width: bw, height: 14, rx: 4, fill: over ? OVER : (ahead ? WARN : BAR) }, svg);
+      const bar = el('rect', { x: labelW, y: cy - 7, width: bw, height: 14, rx: 4, fill: over ? OVER : (ahead ? WARN : BAR) }, svg);
+      if (animates()) grow(bar, { transform: 'scaleX(0)' }, i, null, `${labelW}px ${cy}px`);
       if (it.budget > 0) {
         const bx = labelW + Math.min(1, it.budget / max) * plotW;
         el('line', { x1: bx, x2: bx, y1: cy - 11, y2: cy + 11, class: 'c-budget-tick' }, svg);
@@ -143,7 +156,7 @@
     wrap.className = 'donut-wrap';
     const svg = el('svg', { viewBox: `0 0 ${size} ${size}`, width: size, height: size, role: 'img' });
     let a0 = -Math.PI / 2;
-    entries.forEach(([who, v]) => {
+    entries.forEach(([who, v], idx) => {
       const frac = v / total;
       const a1 = a0 + frac * Math.PI * 2;
       const gap = entries.length > 1 ? 0.028 : 0; // ~2px surface gap between segments
@@ -154,6 +167,11 @@
         d: p, fill: 'none', stroke: colorFor(who), 'stroke-width': thick, 'stroke-linecap': 'butt',
         class: onClick ? 'clickable' : ''
       }, svg);
+      if (animates()) {
+        const len = Math.abs(e - s) * r;
+        arc.style.setProperty('stroke-dasharray', len + ' ' + len);
+        grow(arc, { 'stroke-dashoffset': len }, idx, Motion.dur('emphasis', 320));
+      }
       hoverable(arc, `<strong>${who}</strong><br>${fmt$(v)} · ${Store.fmtPct(frac, 0)}`);
       if (onClick) {
         arc.setAttribute('tabindex', '0');
@@ -215,7 +233,8 @@
       const y = padT + plotH - bh;
       const over = budget > 0 && v > budget;
       if (bh > 0) {
-        el('rect', { x, y, width: bw, height: bh, rx: 4, fill: over ? OVER : BAR }, svg);
+        const col = el('rect', { x, y, width: bw, height: bh, rx: 4, fill: over ? OVER : BAR }, svg);
+        if (animates()) grow(col, { transform: 'scaleY(0)' }, i, null, `${x + bw / 2}px ${padT + plotH}px`);
       }
       const t = el('text', { x: x + bw / 2, y: h - 8, 'text-anchor': 'middle', class: 'c-label' }, svg);
       t.textContent = Store.MONTHS[+ym.slice(5) - 1];
@@ -262,7 +281,12 @@
       d: path + ` L ${X(points.length - 1).toFixed(1)} ${padT + plotH} L ${X(0).toFixed(1)} ${padT + plotH} Z`,
       class: 'c-area'
     }, svg);
-    el('path', { d: path, fill: 'none', class: 'c-line' }, svg);
+    const lineNode = el('path', { d: path, fill: 'none', class: 'c-line' }, svg);
+    if (animates() && lineNode.getTotalLength) {
+      const len = lineNode.getTotalLength();
+      lineNode.style.setProperty('stroke-dasharray', len + ' ' + len);
+      grow(lineNode, { 'stroke-dashoffset': len }, 0, Motion.dur('slow', 400));
+    }
     points.forEach((p, i) => {
       const color = p.tone === 'bad' ? OVER : p.tone === 'warn' ? WARN : BAR;
       el('circle', {
@@ -296,12 +320,13 @@
     const svg = el('svg', { viewBox: `0 0 ${size} ${size}`, width: size, height: size, role: 'img' }, container);
     el('circle', { cx, cy, r, fill: 'none', class: 'c-ring-track', 'stroke-width': thick }, svg);
     const circ = 2 * Math.PI * r;
-    el('circle', {
+    const arc = el('circle', {
       cx, cy, r, fill: 'none', stroke: color || GOLD, 'stroke-width': thick,
       'stroke-linecap': 'round', 'stroke-dasharray': circ,
       'stroke-dashoffset': circ * (1 - Math.min(1, Math.max(0, pct))),
       transform: `rotate(-90 ${cx} ${cy})`
     }, svg);
+    if (animates()) grow(arc, { 'stroke-dashoffset': circ }, 0, Motion.dur('slow', 400));
     const t1 = el('text', { x: cx, y: cy + (subText ? 0 : 5), 'text-anchor': 'middle', class: 'c-ring-pct' }, svg);
     t1.textContent = centerText != null ? centerText : Math.round(pct * 100) + '%';
     if (subText) {

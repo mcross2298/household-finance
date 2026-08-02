@@ -43,7 +43,7 @@
             ${UI.kpi('Net Worth', nwLatest ? S.fmt$(nwLatest.net, 0) : '—',
               nwLatest && nwPrev ? (nwLatest.net >= nwPrev.net ? '+' : '−') + S.fmt$(Math.abs(nwLatest.net - nwPrev.net), 0) + ' vs last snapshot'
                 : nwLatest ? 'as of ' + S.fmtMonth(nwLatest.ym) : 'no balance snapshots yet',
-              null, '#/networth')}
+              null, '#/networth', nwLatest ? nwLatest.net : null)}
             ${UI.kpi('Monthly Surplus', S.fmt$(surplus, 0), 'income − budget', surplus < 0 ? 'bad' : 'gold', '#/budget')}
             ${UI.kpi('Savings Rate', S.fmtPct(rate), 'of take-home', rate < 0 ? 'bad' : '', '#/budget')}
             ${UI.kpi('Safe to Spend', S.fmt$(sts.safe, 0), 'rest of ' + S.fmtMonth(month), sts.safe < 0 ? 'bad' : '', `#/transactions?month=${month}`)}

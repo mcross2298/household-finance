@@ -101,6 +101,49 @@
     }
     return bestScore >= 0.5 ? best : null;
   }
+  /* Last resort before "Other": a fixed keyword table for merchants nobody has
+     categorized yet. It lives here rather than in the import view so it sits
+     in the same pipeline as the learned rules — a keyword hit is offered as a
+     low-confidence guess that the review step can correct and then learn,
+     instead of being an invisible second brain that never improves. */
+  const KEYWORD_CATEGORIES = [
+    [/giant|aldi|wegman|weis|grocery|lidl|trader joe/, 'Groceries'],
+    [/restaurant|grill|pizza|chipotle|mcdonald|wendy|taco|roadhouse|dunkin|starbucks|cafe|bbq|diner/, 'Dining Out'],
+    [/shell|sunoco|exxon|sheetz|wawa|gas|fuel|autozone|jiffy|car wash/, 'Auto'],
+    [/netflix|hulu|hbo|max|spotify|disney|paramount|comcast|xfinity|verizon fios/, 'Internet & Streaming'],
+    [/amazon|target|walmart|marshalls|tj maxx|kohls|old navy/, 'Shopping'],
+    [/gym|planet fitness|crunch|cvs|walgreens|pharmacy|dental|medical/, 'Health & Fitness'],
+    [/vet|petco|petsmart|chewy/, 'Pets'],
+    [/hotel|airbnb|airline|delta|southwest|united|amtrak/, 'Travel'],
+    [/ugi|ppl|water|sewer|electric/, 'Utilities']
+  ];
+  function guessCategory(desc) {
+    const d = String(desc || '').toLowerCase();
+    for (const [re, cat] of KEYWORD_CATEGORIES) if (re.test(d)) return cat;
+    return '';
+  }
+
+  /* The whole categorization pipeline in priority order, returning both the
+     category/who and HOW confident that answer is. The review step keys its
+     triage off `confidence`, so a merchant seen ten times stops costing the
+     same attention as one never seen before:
+       rule      exact learned merchant rule        — trusted, collapses
+       bill      matches a recurring budget line    — worth a glance
+       suggested nearest learned merchant (fuzzy)   — worth a look
+       keyword   fixed keyword table                — worth a look
+       null      nothing matched                    — needs a human */
+  function categorize(tx) {
+    const rule = ruleFor(tx.description);
+    if (rule) return { category: rule.category, who: rule.who, confidence: 'rule' };
+    const line = matchBudgetLine({ description: tx.description, amount: tx.amount, category: '' });
+    if (line) return { category: line.category, who: null, confidence: 'bill' };
+    const sug = suggestRule(tx.description);
+    if (sug) return { category: sug.category, who: sug.who, confidence: 'suggested' };
+    const kw = guessCategory(tx.description);
+    if (kw) return { category: kw, who: null, confidence: 'keyword' };
+    return { category: '', who: null, confidence: null };
+  }
+
   /* Upsert by key: re-learning a merchant updates the existing rule in place. */
   function learnRule(desc, category, who) {
     const match = merchantKey(desc);

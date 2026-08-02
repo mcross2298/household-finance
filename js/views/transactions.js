@@ -118,19 +118,37 @@
       <div class="form-grid">
         <label>Date<input class="input" type="date" id="tx-date" value="${v.date}"></label>
         <label>Amount<input class="input" type="number" step="0.01" inputmode="decimal" id="tx-amount" value="${v.amount}" placeholder="0.00"></label>
-        <label class="span2">Description<input class="input" id="tx-desc" value="${App.esc(v.description)}" placeholder="e.g. Fresh Market"></label>
+        <label class="span2">Description<input class="input" id="tx-desc" value="${App.esc(v.description)}" placeholder="e.g. Giant Foods"></label>
         <label>Category<select class="select" id="tx-cat">${App.options(Store.CATEGORIES, v.category)}</select></label>
         <label>Who<select class="select" id="tx-who">${App.options(Store.WHO, v.who)}</select></label>
         <label>Account<input class="input" id="tx-account" value="${App.esc(v.account)}" placeholder="e.g. Everyday Card"></label>
         <label>Notes<input class="input" id="tx-notes" value="${App.esc(v.notes)}"></label>
       </div>
       <label class="learn-toggle"><input type="checkbox" id="tx-learn">
-        Remember this merchant → category for future imports</label>
+        <span id="tx-learn-text">Remember this merchant → category for future imports</span></label>
       <div class="btn-row">
         <button class="btn gold" id="tx-save">${isNew ? 'Add' : 'Save'}</button>
         ${isNew ? '' : '<button class="btn danger ghost" id="tx-del">Delete</button>'}
       </div>`);
     const g = id => m.el.querySelector(id);
+    /* This box used to default off while the identical control on the import
+       review defaults on — so the single most informative thing a person does,
+       correcting a wrong category, taught the rules engine nothing. It arms
+       itself once the edit actually changes an existing row's category. */
+    let learnTouched = false;
+    const syncLearnDefault = () => {
+      if (isNew || learnTouched) return;
+      const changed = g('#tx-cat').value !== v.category;
+      g('#tx-learn').checked = changed;
+      g('#tx-learn-text').textContent = changed
+        ? 'Remember ' + Store.prettyMerchant(g('#tx-desc').value || v.description) + ' → ' + g('#tx-cat').value + ' for future imports'
+        : 'Remember this merchant → category for future imports';
+    };
+    if (!isNew) {
+      g('#tx-learn').addEventListener('change', () => { learnTouched = true; });
+      g('#tx-cat').addEventListener('change', syncLearnDefault);
+      g('#tx-desc').addEventListener('input', syncLearnDefault);
+    }
     m.el.querySelectorAll('[data-qf]').forEach(btn => btn.addEventListener('click', () => {
       const r = recents[+btn.dataset.qf];
       g('#tx-amount').value = r.amount;
