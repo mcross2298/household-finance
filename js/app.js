@@ -62,7 +62,9 @@
     let caret = null;
     if (keepId) { try { caret = [active.selectionStart, active.selectionEnd]; } catch (e) { caret = null; } }
 
+    if (window.Motion && resetScroll) Motion.arm();
     Views[r](view);
+    if (window.Motion) requestAnimationFrame(() => Motion.runEntrance(view));
 
     if (!resetScroll && keepY) {
       // The first attempt runs before the browser has re-laid-out the new

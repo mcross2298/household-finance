@@ -35,6 +35,18 @@
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
 
+  /* Motion scale. Every duration in this file comes from here — a raw literal
+     is a finding (see scripts/check-token-drift.mjs), same rule the colors
+     already live under. --motion-hold is the odd one out: it's a deliberate
+     gesture length (hold-to-unlock), not a decorative curve, so it's tuned to
+     feel like a commitment rather than to match the rest of the scale. */
+  --motion-fast: .15s;
+  --motion-base: .24s;
+  --motion-emphasis: .32s;
+  --motion-slow: .4s;
+  --motion-hold: .7s;
+  --ease-out-quart: cubic-bezier(.25, 1, .5, 1);
+
   /* --navy and --navy-soft do double duty as brand *surfaces* (sidebar, topbar,
      buttons, meter fills) and as brand *ink* (headline figures, tile glyphs,
      links). Only the ink half can flip with the theme without wrecking the
@@ -267,11 +279,11 @@ h3 { font-size: .95rem; font-weight: 700; }
 .kpi.gold .kpi-value { color: var(--gold); }
 .kpi.bad .kpi-value { color: var(--on-navy-bad); }
 .kpi-sub { font-size: .72rem; color: var(--on-navy-2); }
-a.kpi.kpi-link { color: inherit; text-decoration: none; display: block; transition: background .15s, transform .15s; }
+a.kpi.kpi-link { color: inherit; text-decoration: none; display: block; }
 a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 255, .13); transform: translateY(-1px); }
 
 /* overall progress ring, top-right of the hero */
-.hero-progress { display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 4px 8px 4px 4px; border-radius: 12px; transition: background .15s; }
+.hero-progress { display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 4px 8px 4px 4px; border-radius: 12px; transition: background var(--motion-fast); }
 .hero-progress:hover, .hero-progress:focus-visible { background: rgba(255, 255, 255, .08); }
 .hero-progress-label { font-size: .68rem; letter-spacing: .07em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
 .hero-progress-sub { font-size: .78rem; color: var(--on-navy-nav); margin-top: 2px; }
@@ -291,12 +303,12 @@ a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 
 .ms-label { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
 .ms-value { font-size: 1.12rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .meter { height: 12px; background: var(--blue-card); border-radius: 6px; overflow: hidden; }
-.meter-fill { height: 100%; background: var(--navy-soft); border-radius: 6px; transition: width .4s; }
+.meter-fill { height: 100%; background: var(--navy-soft); border-radius: 6px; transition: width var(--motion-slow) var(--ease-out-quart); }
 .meter-fill.over { background: var(--bad); }
 
 /* mini goals */
 .mini-goals { display: flex; flex-direction: column; gap: 12px; }
-.mini-goal { display: block; text-decoration: none; color: inherit; border-radius: 8px; padding: 6px 4px; margin: -4px; min-height: 44px; transition: background .15s; }
+.mini-goal { display: block; text-decoration: none; color: inherit; border-radius: 8px; padding: 6px 4px; margin: -4px; min-height: 44px; }
 .mini-goal:hover, .mini-goal:focus-visible { background: var(--bg); }
 .mini-goal-bar { height: 8px; background: var(--blue-card); border-radius: 4px; overflow: hidden; margin-bottom: 4px; }
 .mini-goal-bar div { height: 100%; background: var(--gold-ink); border-radius: 4px; }
@@ -325,6 +337,24 @@ a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 
 .rev-who-banner label { font-weight: 700; font-size: .9rem; }
 .rev-who-banner select { min-width: 200px; }
 .rev-who-banner.unset { border-color: var(--warn); background: var(--warn-bg); }
+
+/* Green-path band: the "your work is already done" moment. Navy so it reads as
+   a conclusion rather than another row to process; the rows it stands in for
+   are still one tap away. */
+.green-band {
+  background: var(--navy); color: var(--on-navy); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  border-left: 4px solid var(--gold);
+}
+.green-band .green-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.green-band .green-check { color: var(--gold); display: flex; flex-shrink: 0; }
+.green-band .green-check svg { width: 22px; height: 22px; }
+.green-band .green-title { font-weight: 700; font-size: .95rem; }
+.green-band .green-sub { font-size: .78rem; color: var(--on-navy-2); }
+.green-band .btn.ghost { color: var(--on-navy); border-color: var(--on-navy-line); }
+.green-band .btn.ghost:hover { background: var(--on-navy-fill-hi); }
+.green-band.open { border-left-color: var(--on-navy-line); }
 
 /* card footer link (below meters etc.) */
 .card-foot { margin-top: 10px; }
@@ -362,6 +392,21 @@ a.kpi.kpi-link:hover, a.kpi.kpi-link:focus-visible { background: rgba(255, 255, 
   text-decoration: none;
 }
 .btn:hover { background: var(--navy-soft); }
+/* Press feedback. Compress on the way down fast enough to feel mechanical,
+   release on the standard curve so it settles rather than snapping back. The
+   whole family lives here so a new tappable surface inherits it instead of
+   re-inventing a hover-only state. */
+.btn, .icon-btn, .fab, .qf-chip, .feature-card, .mini-goal, .sts, .due-soon,
+a.kpi.kpi-link, .legend-item.clickable {
+  transition: transform var(--motion-base) var(--ease-out-quart),
+              background var(--motion-fast);
+}
+.btn:active, .icon-btn:active, .fab:active, .qf-chip:active, .feature-card:active,
+.mini-goal:active, .sts:active, .due-soon:active, a.kpi.kpi-link:active,
+.legend-item.clickable:active {
+  transform: scale(.98);
+  transition-duration: var(--motion-fast);
+}
 .btn.gold { background: var(--gold); color: var(--navy-deep); }
 .btn.gold:hover { background: var(--gold-hover); }
 .btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
@@ -497,7 +542,7 @@ input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; accent-color
    goals.js — the two must stay in sync if either changes. */
 .unlock-hold { position: relative; overflow: hidden; background: var(--bg); color: var(--ink-2); border: 1.5px solid var(--line); width: 100%; justify-content: center; }
 .unlock-fill { position: absolute; inset: 0; background: var(--gold); transform: scaleX(0); transform-origin: left; }
-.unlock-hold.holding .unlock-fill { transition: transform .7s linear; transform: scaleX(1); }
+.unlock-hold.holding .unlock-fill { transition: transform var(--motion-hold) linear; transform: scaleX(1); }
 .unlock-label { position: relative; z-index: 1; }
 
 /* ---------- house ---------- */
@@ -591,7 +636,7 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   background: var(--surface); width: 100%; max-width: 560px;
   border-radius: 18px 18px 0 0; max-height: 88vh; overflow-y: auto;
   padding-bottom: var(--sab);
-  animation: slide-up .22s ease;
+  animation: slide-up var(--motion-base) var(--ease-out-quart);
 }
 @media (min-width: 640px) {
   .modal-backdrop { align-items: center; padding: 24px; }
@@ -620,7 +665,7 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .lock-actions .btn { width: 100%; }
 .lock-forgot { margin-top: 16px; }
 .lock-forgot button { background: none; border: none; color: var(--ink-3); text-decoration: underline; font-size: .8rem; cursor: pointer; padding: 6px; }
-.lock-card.shake { animation: lock-shake .32s; }
+.lock-card.shake { animation: lock-shake var(--motion-emphasis); }
 @keyframes lock-shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
 .modal-head {
   display: flex; justify-content: space-between; align-items: center;
@@ -634,7 +679,7 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .toast {
   background: var(--navy-deep); color: #fff; font-size: .86rem; font-weight: 600;
   padding: 11px 18px; border-radius: 24px; box-shadow: 0 4px 16px rgba(0, 0, 0, .25);
-  opacity: 0; transform: translateY(8px); transition: all .25s;
+  opacity: 0; transform: translateY(8px); transition: all var(--motion-base) var(--ease-out-quart);
   border-left: 4px solid var(--gold);
 }
 .toast.warn { border-left-color: var(--bad); }
@@ -651,7 +696,7 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   border: none; font-size: 1.6rem; font-weight: 700; line-height: 1;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 6px 18px rgba(31, 56, 100, .28), 0 2px 6px rgba(31, 56, 100, .18);
-  cursor: pointer; transition: transform .15s, background .15s;
+  cursor: pointer;
 }
 .fab:hover, .fab:focus-visible { background: var(--gold-hover); transform: translateY(-2px); }
 .fab.hidden { display: none; }
@@ -721,7 +766,6 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   background: rgba(255, 255, 255, .07); border-radius: 12px;
   border-left: 3px solid var(--gold);
   padding: 14px 16px; margin-bottom: 14px;
-  transition: background .15s;
 }
 .sts:hover, .sts:focus-visible { background: rgba(255, 255, 255, .13); }
 .sts-label { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
@@ -735,7 +779,6 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   background: rgba(255, 255, 255, .07); border-radius: 12px;
   border-left: 3px solid var(--gold);
   padding: 12px 16px; margin-bottom: 14px;
-  transition: background .15s;
 }
 .due-soon:hover, .due-soon:focus-visible { background: rgba(255, 255, 255, .13); }
 .due-soon-label { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); font-weight: 700; margin-bottom: 8px; }
@@ -941,7 +984,7 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .feature-card {
   display: flex; gap: 10px; align-items: flex-start; text-decoration: none; color: inherit;
   background: var(--blue-card); border: 1.5px solid var(--navy-soft); border-radius: 10px;
-  padding: 12px; transition: background .15s, transform .15s;
+  padding: 12px;
 }
 .feature-card:hover, .feature-card:focus-visible { background: var(--bg); transform: translateY(-1px); }
 .feature-ico { flex-shrink: 0; color: var(--brand-ink); margin-top: 1px; }

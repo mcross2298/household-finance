@@ -81,6 +81,23 @@
     t('rule matches across cities', !!S.ruleFor('GIANT #2 BETHLEHEM PA'));
     t('no false rule match', !S.ruleFor('WAWA 100 EASTON PA'));
 
+    /* categorization pipeline — the confidence tier is what the import review
+       triages on, so each rung needs to be the one that answers. */
+    const conf = d => S.categorize({ description: d, amount: 0 }).confidence;
+    t('learned rule wins outright', conf('GIANT #2 BETHLEHEM PA') === 'rule', conf('GIANT #2 BETHLEHEM PA'));
+    t('recurring bill line beats keywords',
+      S.categorize({ description: 'NETFLIX.COM', amount: 20 }).confidence === 'bill',
+      JSON.stringify(S.categorize({ description: 'NETFLIX.COM', amount: 20 })));
+    t('keyword table is the last rung before nothing',
+      conf('SHEETZ 455 BETHLEHEM') === 'keyword', conf('SHEETZ 455 BETHLEHEM'));
+    t('unknown merchant returns no confidence',
+      conf('ZZQX HOLDINGS LLC') === null, String(conf('ZZQX HOLDINGS LLC')));
+    t('keyword guess still yields a usable category',
+      S.categorize({ description: 'SHEETZ 455 BETHLEHEM', amount: 40 }).category === 'Auto');
+    t('guessCategory returns empty, not Other, when nothing matches',
+      S.guessCategory('ZZQX HOLDINGS LLC') === '');
+
+
     /* dedupe — the demo seed's dates are relative to today (not fixed like
        Cross-Household-'s real data), so the comparison dates here are built
        relative to the seeded transaction itself rather than hardcoded. */

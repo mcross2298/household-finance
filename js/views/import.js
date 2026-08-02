@@ -121,28 +121,35 @@
       }));
   };
 
-  /* Applied to every pending set before review: fill category/who from learned
-     rules (marked "auto"), fall back to a matching budget line, and clean
-     statement-junk descriptions on the PDF path. Source-file values always win. */
+  /* Applied to every pending set before review: run each row through the
+     store's categorization pipeline and record how confident the answer was,
+     and clean statement-junk descriptions on the PDF path. Source-file values
+     always win. `confidence` is what the review step tiers on. */
   function applyIntelligence(cleanDesc) {
     for (const p of pending) {
       if (cleanDesc) p.description = Store.prettyMerchant(p.description);
-      const rule = Store.ruleFor(p.description);
-      if (rule && !p.catFromSource) {
-        p.category = rule.category;
-        if (!p.whoFromSource) p.who = rule.who;
-        p.auto = 'rule';
-      } else if (!p.catFromSource && (!p.category || p.category === 'Other')) {
-        const line = Store.matchBudgetLine({ description: p.description, amount: p.amount, category: '' });
-        if (line) { p.category = line.category; p.auto = 'bill'; }
-        else {
-          // No confident match — a fuzzy nearest-neighbor guess still beats a
-          // blank "Other", as long as it's flagged for a second look.
-          const sug = Store.suggestRule(p.description);
-          if (sug) { p.category = sug.category; if (!p.whoFromSource) p.who = sug.who; p.suggested = true; }
-        }
-      }
+      if (p.catFromSource) { p.confidence = 'source'; continue; }
+      if (p.category && p.category !== 'Other') continue;
+      const g = Store.categorize({ description: p.description, amount: p.amount });
+      if (!g.confidence) continue;
+      p.category = g.category;
+      if (g.who && !p.whoFromSource) p.who = g.who;
+      p.confidence = g.confidence;
+      // kept for the existing badge vocabulary
+      if (g.confidence === 'rule' || g.confidence === 'bill') p.auto = g.confidence;
+      else p.suggested = true;
     }
+  }
+
+  /* Green path: a row whose category came from an exact learned merchant rule,
+     is structurally valid, and doesn't look like a duplicate. These are the
+     rows the app has already been right about many times over — they get
+     collapsed behind a single summary instead of costing a line of attention
+     each. Everything else stays expanded. */
+  function isGreen(p) {
+    return p.include && p.confidence === 'rule'
+      && !!p.date && p.amount !== '' && !!p.category
+      && !Store.likelyDuplicate(p);
   }
 
   function handleFile(file, root) {
@@ -318,34 +325,25 @@
       desc = desc.replace(dateRe, '').replace(/\s+/g, ' ').trim(); // second (posted) date, if any
       out.push({
         include: true, date: iso, description: desc,
-        amount: Math.abs(amount), category: guessCategory(desc),
+        amount: Math.abs(amount), category: '',
         who: 'Shared', account: '', notes: ''
       });
     }
     return out;
   }
 
-  function guessCategory(desc) {
-    const d = desc.toLowerCase();
-    const rules = [
-      [/giant|aldi|wegman|weis|grocery|lidl|trader joe/, 'Groceries'],
-      [/restaurant|grill|pizza|chipotle|mcdonald|wendy|taco|roadhouse|dunkin|starbucks|cafe|bbq|diner/, 'Dining Out'],
-      [/shell|sunoco|exxon|sheetz|wawa|gas|fuel|autozone|jiffy|car wash/, 'Auto'],
-      [/netflix|hulu|hbo|max|spotify|disney|paramount|comcast|xfinity|verizon fios/, 'Internet & Streaming'],
-      [/amazon|target|walmart|marshalls|tj maxx|kohls|old navy/, 'Shopping'],
-      [/gym|planet fitness|crunch|cvs|walgreens|pharmacy|dental|medical/, 'Health & Fitness'],
-      [/vet|petco|petsmart|chewy/, 'Pets'],
-      [/hotel|airbnb|airline|delta|southwest|united|amtrak/, 'Travel'],
-      [/ugi|ppl|water|sewer|electric/, 'Utilities']
-    ];
-    for (const [re, cat] of rules) if (re.test(d)) return cat;
-    return 'Other';
-  }
-
   /* ---------- review step ---------- */
+  let greenOpen = false;   // has the user expanded the auto-categorized rows?
+
   function renderReview(root) {
     const included = pending.filter(p => p.include);
     const autoCount = pending.filter(p => p.auto).length;
+    const green = pending.filter(isGreen);
+    const greenIdx = new Set(green.map(p => pending.indexOf(p)));
+    // Collapsing only pays for itself when there's a real majority to hide;
+    // below that it just adds a click to a short list.
+    const collapse = green.length >= 3 && !greenOpen;
+    const rows = collapse ? pending.filter(p => !greenIdx.has(pending.indexOf(p))) : pending;
     root.innerHTML = `
       <div class="page">
         <div class="page-head">
@@ -369,13 +367,25 @@
           </div>
           <div class="rev-tools">
             <label>Account for all rows
-              <input class="input" id="rev-account" placeholder="e.g. Everyday Card" value=""></label>
+              <input class="input" id="rev-account" placeholder="e.g. Chase CFU" value=""></label>
           </div>
+          ${green.length >= 3 ? `
+          <div class="green-band${collapse ? '' : ' open'}">
+            <div class="green-main">
+              <span class="green-check" aria-hidden="true">${UI.icon('check') || '✓'}</span>
+              <div>
+                <div class="green-title">${green.length} row${green.length === 1 ? '' : 's'} already categorized</div>
+                <div class="green-sub">Matched merchant rules you've confirmed before · ${Store.fmt$(green.reduce((s2, p) => s2 + (+p.amount || 0), 0))}</div>
+              </div>
+            </div>
+            <button class="btn ghost sm" id="green-toggle" aria-expanded="${collapse ? 'false' : 'true'}">${collapse ? 'Review them' : 'Hide them'}</button>
+          </div>` : ''}
           <div class="table-scroll">
             <table class="table rev-table">
               <thead><tr><th></th><th>Date</th><th>Description</th><th class="num">Amount</th><th>Category</th><th>Who</th><th></th></tr></thead>
               <tbody>
-                ${pending.map((p, i) => {
+                ${rows.map(p => {
+                  const i = pending.indexOf(p);
                   const bad = !p.date || p.amount === '' || !p.category;
                   const dup = !!Store.likelyDuplicate(p);
                   return `<tr class="${bad ? 'bad' : ''}${dup ? ' dup' : ''}">
@@ -399,9 +409,10 @@
           <label class="learn-toggle"><input type="checkbox" id="rev-learn" checked>
             Remember these categorizations as rules for future imports</label>
           <div class="btn-row">
-            <button class="btn gold" id="rev-commit">Import ${included.length} transaction${included.length === 1 ? '' : 's'}</button>
+            <button class="btn gold" id="rev-commit">Import ${included.length} transaction${included.length === 1 ? '' : 's'}${green.length >= 3 ? ` (${green.length} auto)` : ''}</button>
           </div>
-          <p class="help">Rows marked <span class="pill auto">auto</span> were categorized for you — from a learned rule or a matching budget line.
+          <p class="help">Rows that matched a merchant rule you've already confirmed are collapsed above — expand them any time to check.
+             Rows marked <span class="pill auto">auto</span> were categorized for you — from a learned rule or a matching budget line.
              <span class="pill warn">suggested</span> rows are a best guess from a similar merchant you've categorized before — worth a second look before importing.
              <span class="pill warn">dup</span> rows look like an existing transaction (same amount, similar merchant, nearby date) or a recurring bill already posted this month — uncheck them unless they're real repeats.
              <span class="pill bad">fix</span> rows are missing a valid date, amount, or category and will be skipped.</p>
@@ -425,7 +436,9 @@
     root.querySelector('#rev-who').addEventListener('change', e => {
       if (e.target.value) { pending.forEach(p => p.who = e.target.value); whoTouched = true; App.render(); }
     });
-    root.querySelector('#rev-cancel').addEventListener('click', () => { pending = null; App.render({ resetScroll: true }); });
+    const gt = root.querySelector('#green-toggle');
+    if (gt) gt.addEventListener('click', () => { greenOpen = !greenOpen; App.render(); });
+    root.querySelector('#rev-cancel').addEventListener('click', () => { pending = null; greenOpen = false; App.render({ resetScroll: true }); });
     root.querySelector('#rev-commit').addEventListener('click', () => {
       const good = pending.filter(p => p.include && p.date && p.amount !== '' && p.category);
       if (!good.length) return App.toast('Nothing valid selected', 'warn');
@@ -449,7 +462,7 @@
         Store.addImportBatch(sourceName, ids);
         Store.touchTransactions(); Store.save();
         const newRules = Store.data.rules.length - ruleCountBefore;
-        pending = null;
+        pending = null; greenOpen = false;
         App.toast('Imported ' + good.length + ' transactions'
           + (newRules ? ' · learned ' + newRules + ' rule' + (newRules === 1 ? '' : 's') : '')
           + (skipped ? ' · ' + skipped + ' skipped' : ''));

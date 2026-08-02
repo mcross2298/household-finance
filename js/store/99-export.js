@@ -25,7 +25,7 @@
     balanceAt, latestBalance, netWorthSeries, saveSnapshot, debtPayoff, forecast,
     debtStrategies, debtStrategiesSummary, debtPayoffOrder, debtRollupPlan, debtPayoffOrderComparison,
     normalizeMerchant, merchantKey, prettyMerchant,
-    ruleFor, suggestRule, learnRule, likelyDuplicate,
+    ruleFor, suggestRule, learnRule, guessCategory, categorize, likelyDuplicate,
     matchBudgetLine, budgetLineStatus,
     effectiveBudget, rolloverAdjustmentTotal, autoPostDueBills, underBudgetStreak,
     addImportBatch, undoImportBatch, integrityCheck

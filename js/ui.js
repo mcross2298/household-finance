@@ -13,12 +13,15 @@
   const stat = (label, value, t) =>
     `<div class="stat${tone(t)}"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
 
-  /* Hero KPI. With `href` the whole tile becomes a drill-down target. */
-  const kpi = (label, value, sub, t, href) => {
+  /* Hero KPI. With `href` the whole tile becomes a drill-down target. `raw`,
+     when given, is the unformatted figure — it opts the tile into the
+     count-up on route entry, which is why it's a number and not the already
+     formatted `value`. */
+  const kpi = (label, value, sub, t, href, raw) => {
     const tag = href ? 'a' : 'div';
     return `<${tag} class="kpi${tone(t)}${href ? ' kpi-link' : ''}"${href ? ` href="${href}"` : ''}>
       <div class="kpi-label">${label}</div>
-      <div class="kpi-value">${value}</div>
+      <div class="kpi-value"${raw == null ? '' : ` data-countup="${raw}"`}>${value}</div>
       <div class="kpi-sub">${sub}</div>
     </${tag}>`;
   };

@@ -130,7 +130,7 @@
           ${isCurrent ? `
           <a class="sts${sts.safe < 0 ? ' neg' : ''}" href="#/transactions?month=${month}">
             <div class="sts-label">Safe to spend · rest of ${S.fmtMonth(month)}</div>
-            <div class="sts-value">${S.fmt$(sts.safe, 0)}</div>
+            <div class="sts-value" data-countup="${sts.safe}">${S.fmt$(sts.safe, 0)}</div>
             <div class="sts-sub">${S.fmt$(sts.spent, 0)} spent so far${sts.upcomingCount
               ? ` · ${S.fmt$(sts.upcoming, 0)} reserved for ${sts.upcomingCount} upcoming bill${sts.upcomingCount === 1 ? '' : 's'}` : ''}</div>
           </a>

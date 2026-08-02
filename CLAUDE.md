@@ -80,6 +80,14 @@ which before doing anything else:
 - `js/app.js` — hash-based router, modals, toasts, global search.
 - `js/charts.js` — dependency-free inline-SVG charts (bars, donut, trend,
   rings). No charting library.
+- `js/motion.js` (`window.Motion`) — the JS half of the motion system;
+  `css/styles.css`'s `--motion-*` tokens are the other half, and `motion.js`
+  reads its durations back out of them so the scale has one definition.
+  Entrance motion (chart sweeps, hero count-up) is **armed by the router only
+  on a real route change** — `App.render()` also runs for in-place edits like
+  a filter or one cell of an import review, and re-animating on those would be
+  noise. Everything collapses to the final state under
+  `prefers-reduced-motion`.
 - `js/ui.js` — shared view-kit (`stat`, `kpi`, `delta`, `insightList`, etc.)
   factored out so views don't each hand-roll the same markup; several view
   files depend on it.
@@ -168,7 +176,10 @@ UI/UX-visible change without checking whether either surface needs a touch.
   and PR, so a broken assertion is a red check, not just a missed manual step.
   That workflow runs four jobs total: `money-math` (`scripts/run-tests.mjs`);
   `token-drift` (`scripts/check-token-drift.mjs`), which fails if a raw hex
-  color slipped in instead of a themed design token; `a11y`
+  color slipped in instead of a themed design token, or a raw duration
+  slipped into a `transition`/`animation` instead of a `--motion-*` token
+  (`js/motion.js` reads its timings back out of those same tokens, so a
+  literal desynchronises the JS half of the motion system too); `a11y`
   (`scripts/check-a11y.mjs`), which checks contrast and 48px touch targets
   across every route in both light and dark themes; and `doc-drift`
   (`scripts/check-doc-drift.mjs`), which fails CI if a doc's CSV header or

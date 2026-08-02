@@ -14,7 +14,7 @@
     { id: 'transactions', route: 'transactions', icon: 'list', title: 'Transactions',
       blurb: 'Every transaction — searchable, filterable, and attributed to a person or Shared.' },
     { id: 'import', route: 'import', icon: 'upload', title: 'Import',
-      blurb: 'Pull in a bank CSV and auto-match it to budget lines and merchant rules.' },
+      blurb: 'Pull in a bank CSV or PDF statement — merchants you’ve categorized before are filled in and collapsed, so review is only the rows that actually need you.' },
     { id: 'budget', route: 'budget', icon: 'grid', title: 'Budget',
       blurb: 'Recurring income and spending lines, split across the household or Shared.' },
     { id: 'calendar', route: 'calendar', icon: 'calendar', title: 'Bill Calendar',
