@@ -180,7 +180,7 @@ UI/UX-visible change without checking whether either surface needs a touch.
   slipped into a `transition`/`animation` instead of a `--motion-*` token
   (`js/motion.js` reads its timings back out of those same tokens, so a
   literal desynchronises the JS half of the motion system too); `a11y`
-  (`scripts/check-a11y.mjs`), which checks contrast and 48px touch targets
+  (`scripts/check-a11y.mjs`), which checks contrast and 44px touch targets
   across every route in both light and dark themes; and `doc-drift`
   (`scripts/check-doc-drift.mjs`), which fails CI if a doc's CSV header or
   category list has drifted from `js/store/00-state.js`'s
