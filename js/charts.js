@@ -98,7 +98,7 @@
     container.innerHTML = '';
     if (!items.length) { container.innerHTML = '<p class="empty">No spending recorded for this month yet.</p>'; return; }
     const rowH = 44, labelW = 128, valueW = 84, h = items.length * rowH;
-    const w = Math.max(320, container.clientWidth || 560);
+    const w = container.clientWidth || 560;
     const plotW = w - labelW - valueW;
     const max = Math.max(...items.map(i => Math.max(i.value, i.budget || 0))) * 1.05 || 1;
     const svg = el('svg', { viewBox: `0 0 ${w} ${h}`, width: '100%', height: h, role: 'img' }, container);
@@ -213,7 +213,7 @@
   function trendColumns(container, months, values, budget, onClick) {
     container.innerHTML = '';
     if (!months.length) { container.innerHTML = '<p class="empty">No history yet.</p>'; return; }
-    const w = Math.max(320, container.clientWidth || 560), h = 190;
+    const w = container.clientWidth || 560, h = 190;
     const padL = 8, padR = 8, padT = 18, padB = 26;
     const plotW = w - padL - padR, plotH = h - padT - padB;
     const max = Math.max(budget || 0, ...values) * 1.1 || 1;
@@ -262,7 +262,7 @@
     opts = opts || {};
     container.innerHTML = '';
     if (!points.length) { container.innerHTML = '<p class="empty">' + (opts.empty || 'No data yet.') + '</p>'; return; }
-    const w = Math.max(320, container.clientWidth || 560), h = 200;
+    const w = container.clientWidth || 560, h = 200;
     const padL = 8, padR = 46, padT = 16, padB = 26;
     const plotW = w - padL - padR, plotH = h - padT - padB;
     const vals = points.map(p => p.value);
