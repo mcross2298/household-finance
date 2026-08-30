@@ -8,7 +8,10 @@
    - Every fenced CSV header line in the docs matches Store.CSV_HEADER exactly.
    - Every prose enumeration of the category list matches CATEGORIES exactly
      (same 19 names, same order).
-   - Every "N-category" claim (e.g. "19-category") matches CATEGORIES.length.  */
+   - Every "N-category" claim (e.g. "19-category") matches CATEGORIES.length.
+   - Every "Npx touch target(s)" claim matches the threshold check-a11y.mjs
+     actually enforces (roadmap X-I3/H-I3 — CLAUDE.md once claimed 48px while
+     the gate enforced 44, and nothing was scoped to catch that drift).  */
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +28,11 @@ function extractArray(src, constName) {
 const storeSrc = await readFile(resolve(ROOT, 'js/store/00-state.js'), 'utf8');
 const CATEGORIES = extractArray(storeSrc, 'CATEGORIES');
 const CSV_HEADER = extractArray(storeSrc, 'CSV_HEADER');
+
+const a11ySrc = await readFile(resolve(ROOT, 'scripts/check-a11y.mjs'), 'utf8');
+const targetMatch = a11ySrc.match(/r\.height < (\d+) \|\| r\.width < \1/);
+if (!targetMatch) throw new Error('Could not find the touch-target threshold in scripts/check-a11y.mjs');
+const TARGET_PX = +targetMatch[1];
 
 const DOCS = ['CLAUDE.md', 'README.md'];
 
@@ -46,6 +54,13 @@ for (const relPath of DOCS) {
   for (const m of text.matchAll(/(\d+)-category/g)) {
     if (+m[1] !== CATEGORIES.length) {
       errors.push(`${relPath}: says "${m[1]}-category" but CATEGORIES has ${CATEGORIES.length} entries`);
+    }
+  }
+
+  // "Npx touch target(s)" claims, e.g. "44px touch targets"
+  for (const m of text.matchAll(/(\d+)px touch targets?/g)) {
+    if (+m[1] !== TARGET_PX) {
+      errors.push(`${relPath}: says "${m[1]}px touch targets" but check-a11y.mjs enforces ${TARGET_PX}px`);
     }
   }
 
@@ -72,4 +87,4 @@ if (errors.length) {
   errors.forEach(e => console.error('  - ' + e));
   process.exit(1);
 }
-console.log(`Docs match js/store/00-state.js — ${CATEGORIES.length} categories, CSV header "${CSV_HEADER.join(',')}".`);
+console.log(`Docs match js/store/00-state.js — ${CATEGORIES.length} categories, CSV header "${CSV_HEADER.join(',')}", ${TARGET_PX}px touch-target floor.`);

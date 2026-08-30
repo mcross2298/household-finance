@@ -57,10 +57,16 @@ const browser = await chromium.launch(
 );
 const failures = [];
 
+// 320 is the narrowest phone width still in real use (SE-class); 390 is the
+// baseline. Both were verified clean before this second width was added
+// (roadmap X-I2/H-I3) — this locks that state in, it isn't chasing a defect.
+const VIEWPORTS = [{ width: 390, height: 844 }, { width: 320, height: 690 }];
+
+for (const vp of VIEWPORTS) {
 for (const theme of ['light', 'dark']) {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: theme });
+  const ctx = await browser.newContext({ viewport: vp, colorScheme: theme });
   const page = await ctx.newPage();
-  page.on('pageerror', e => failures.push(`[js] ${theme}: ${e.message}`));
+  page.on('pageerror', e => failures.push(`[js] ${vp.width}px ${theme}: ${e.message}`));
 
   for (const route of routes) {
     await page.goto(`http://localhost:${PORT}/index.html#/${route}`, { waitUntil: 'networkidle' });
@@ -126,14 +132,15 @@ for (const theme of ['light', 'dark']) {
     });
 
     for (const c of found.contrast) {
-      failures.push(`[contrast] ${theme} #/${route} .${c.cls} — ${c.ratio}:1, needs ${c.need} (${c.size}px "${c.text}")`);
+      failures.push(`[contrast] ${vp.width}px ${theme} #/${route} .${c.cls} — ${c.ratio}:1, needs ${c.need} (${c.size}px "${c.text}")`);
     }
     for (const t of found.targets) {
       if (TARGET_EXEMPT.some(e => e.match.test(t.cls))) continue;
-      failures.push(`[target] ${theme} #/${route} .${t.cls} — ${t.h}x${t.w}px, needs 44 ("${t.label}")`);
+      failures.push(`[target] ${vp.width}px ${theme} #/${route} .${t.cls} — ${t.h}x${t.w}px, needs 44 ("${t.label}")`);
     }
   }
   await ctx.close();
+}
 }
 
 await browser.close();
@@ -141,10 +148,10 @@ server.close();
 
 const unique = [...new Set(failures)];
 if (unique.length) {
-  console.error(`\ncheck-a11y: ${unique.length} problem(s) across ${routes.length} routes x 2 themes\n`);
+  console.error(`\ncheck-a11y: ${unique.length} problem(s) across ${routes.length} routes x ${VIEWPORTS.length} viewports x 2 themes\n`);
   for (const f of unique.slice(0, 40)) console.error('  • ' + f);
   if (unique.length > 40) console.error(`  … and ${unique.length - 40} more`);
   console.error('');
   process.exit(1);
 }
-console.log(`check-a11y: ${routes.length} routes x 2 themes — contrast and touch targets clean, no JS errors.`);
+console.log(`check-a11y: ${routes.length} routes x ${VIEWPORTS.length} viewports x 2 themes — contrast and touch targets clean, no JS errors.`);
