@@ -3,19 +3,29 @@
    often redirect the latter to the former, and caching (then replaying) a
    redirected Response for a navigation is what Chrome's install check flags as
    "Response served by service worker has redirections". */
-const CACHE = 'household-finance-v8';
+const CACHE = 'household-finance-v9';
 const SHELL = [
   './',
   './manifest.json',
   './css/styles.css',
-  './js/store.js',
+  './js/store/00-state.js',
+  './js/store/01-format.js',
+  './js/store/02-members.js',
+  './js/store/03-budget.js',
+  './js/store/04-paycycles.js',
+  './js/store/05-transactions.js',
+  './js/store/06-calendar.js',
+  './js/store/07-networth.js',
+  './js/store/99-export.js',
   './js/lock.js',
   './js/icons.js',
   './js/theme.js',
   './js/motion.js',
   './js/charts.js',
-  './js/app.js',
+  './js/ui.js',
+  './js/features.js',
   './js/views/dashboard.js',
+  './js/views/summary.js',
   './js/views/transactions.js',
   './js/views/import.js',
   './js/views/budget.js',
@@ -27,8 +37,9 @@ const SHELL = [
   './js/views/house.js',
   './js/views/invest.js',
   './js/views/wedding.js',
-  './js/views/plan.js',
   './js/views/backup.js',
+  './js/tour.js',
+  './js/app.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png'
