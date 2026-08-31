@@ -283,6 +283,12 @@
     if (document.visibilityState === 'visible') { checkReminders(); checkInsightNudges(); }
   });
 
+  /* Storage quota exceeded: the app keeps working from memory, but the user
+     must know their changes aren't persisting before they close the tab. */
+  document.addEventListener('cf:save-error', () => {
+    toast('Storage is full — changes may not persist. Export a backup now.', 'warn');
+  });
+
   /* ---------- install prompt (re-offered, not one-shot) ---------- */
   /* Chrome/Edge fire beforeinstallprompt again on later visits as long as the
      app isn't installed — capturing it every time (instead of only once) is

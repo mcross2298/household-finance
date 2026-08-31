@@ -236,7 +236,13 @@
   }
   function save() {
     data.lastUpdated = new Date().toISOString();
-    localStorage.setItem(KEY, JSON.stringify(data));
+    try {
+      localStorage.setItem(KEY, JSON.stringify(data));
+    } catch (e) {
+      // Quota exceeded: keep working from memory, but tell the user their
+      // changes aren't persisting so they can export before closing the tab.
+      document.dispatchEvent(new CustomEvent('cf:save-error'));
+    }
     document.dispatchEvent(new CustomEvent('cf:change'));
   }
   function reset() { data = seed(); save(); }
