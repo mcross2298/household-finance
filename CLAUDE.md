@@ -174,18 +174,26 @@ UI/UX-visible change without checking whether either surface needs a touch.
   confirm all assertions still pass — the same suite runs headlessly in CI
   (`.github/workflows/tests.yml`, via `scripts/run-tests.mjs`) on every push
   and PR, so a broken assertion is a red check, not just a missed manual step.
-  That workflow runs four jobs total: `money-math` (`scripts/run-tests.mjs`);
+  That workflow runs six jobs total: `money-math` (`scripts/run-tests.mjs`);
   `token-drift` (`scripts/check-token-drift.mjs`), which fails if a raw hex
   color slipped in instead of a themed design token, or a raw duration
   slipped into a `transition`/`animation` instead of a `--motion-*` token
   (`js/motion.js` reads its timings back out of those same tokens, so a
   literal desynchronises the JS half of the motion system too); `a11y`
   (`scripts/check-a11y.mjs`), which checks contrast and 44px touch targets
-  across every route in both light and dark themes; and `doc-drift`
-  (`scripts/check-doc-drift.mjs`), which fails CI if a doc's CSV header or
-  category list has drifted from `js/store/00-state.js`'s
+  across every route in both light and dark themes; `start-fresh`
+  (`scripts/check-start-fresh.mjs`, H-I4 — VOC/VOA Kaizen audit), which
+  drives the real "Start fresh" button + confirm-modal path on the Export &
+  Backup screen and asserts the resulting single-member ("You") household is
+  coherent across all 14 routes (localStorage matches `emptyState()`'s exact
+  shape, and no route leaks a raw "undefined"/"NaN"/"[object Object]" into
+  visible text — the fingerprint of code that assumed a 2-person roster);
+  `doc-drift` (`scripts/check-doc-drift.mjs`), which fails CI if a doc's CSV
+  header or category list has drifted from `js/store/00-state.js`'s
   `CSV_HEADER`/`CATEGORIES` — the actual single source of truth for that
-  contract.
+  contract; and `sw-shell` (`scripts/check-sw-shell.mjs`, roadmap H-I1),
+  which fails if `sw.js`'s `SHELL` precache list omits a script
+  `index.html` actually loads, or names one that no longer exists on disk.
 
 ## Docs in this repo
 
