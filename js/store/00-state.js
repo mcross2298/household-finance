@@ -178,6 +178,12 @@
      so a backup from any version restores cleanly. */
   function migrate() {
     const v = +data.version || 1;
+    // Runs even on the "already current" fast path below: a payload that
+    // claims v10 but is still missing `reminders` (a truncated sync row, a
+    // hand-edited backup) would otherwise skip every step here and throw the
+    // first time UI code reads Store.data.reminders.*, instead of healing
+    // now while replace()'s try/catch can still catch it.
+    data.reminders = data.reminders || { enabled: false, daysAhead: 3, log: {} };
     if (v >= 10) return;
     if (v < 2) {
       data.rules = data.rules || [];
@@ -185,7 +191,6 @@
     }
     if (v < 3) {
       data.closes = data.closes || {};
-      data.reminders = data.reminders || { enabled: false, daysAhead: 3, log: {} };
     }
     data.accounts = data.accounts || seedAccounts();
     data.snapshots = data.snapshots || {};
@@ -235,7 +240,21 @@
     document.dispatchEvent(new CustomEvent('cf:change'));
   }
   function reset() { data = seed(); save(); }
-  function replace(next) { data = next; migrate(); save(); }
+  /* Validate before assigning, and roll back if migrate() still throws —
+     replace() is reached from the forgot-PIN restore and a JSON backup
+     restore, and a bad payload (a truncated file, a snapshot from a newer
+     schema, a hand-edited file) used to overwrite `data` first and migrate
+     second, so a throw here left the store holding the corrupt object with
+     no way back short of a reload. */
+  function replace(next) {
+    if (!next || !Array.isArray(next.transactions) || !Array.isArray(next.budget) || !Array.isArray(next.goals)) {
+      throw new Error('Invalid state payload');
+    }
+    const prev = data;
+    data = next;
+    try { migrate(); } catch (e) { data = prev; throw e; }
+    save();
+  }
 
   /* A blank-but-valid household for "Start fresh": one placeholder member, no
      budget/transactions/goals/accounts, planning scaffolds zeroed. Everything the
