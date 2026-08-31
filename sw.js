@@ -3,7 +3,7 @@
    often redirect the latter to the former, and caching (then replaying) a
    redirected Response for a navigation is what Chrome's install check flags as
    "Response served by service worker has redirections". */
-const CACHE = 'household-finance-v10';
+const CACHE = 'household-finance-v11';
 const SHELL = [
   './',
   './manifest.json',
@@ -45,19 +45,41 @@ const SHELL = [
   './icons/apple-touch-icon.png'
 ];
 
+/* Everything except the home-screen icons must precache successfully for the
+   install to complete — a fetch failure here used to be swallowed silently,
+   so a phone with a flaky connection on first visit would "install" the
+   offline app while missing pieces of its own shell, then serve the
+   browser's own network-error page (not the app) the next time it actually
+   went offline, with no way to tell from the outside that install had ever
+   gone wrong. Icons are cosmetic; a slow or broken icon fetch shouldn't
+   block getting the rest of the app installed. */
+const REQUIRED_SHELL = SHELL.filter(url => !url.startsWith('./icons/'));
+const OPTIONAL_SHELL = SHELL.filter(url => url.startsWith('./icons/'));
+
+async function precache(c, url) {
+  // cache: 'reload' bypasses the browser's ordinary HTTP cache — without it,
+  // a host that doesn't send Cache-Control on every path can let a stale
+  // byte-for-byte copy of an old deploy get read here and baked into this
+  // brand-new named cache, so a version bump installs a half-updated shell
+  // instead of the new one.
+  const res = await fetch(url, { cache: 'reload' });
+  // Skip anything that redirected — see the top-of-file note — without
+  // treating it as a failure; there's nothing more to do for this URL.
+  if (res.ok && !res.redirected) await c.put(url, res);
+}
+
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => Promise.all(SHELL.map(url =>
-      // cache: 'reload' bypasses the browser's ordinary HTTP cache — without it,
-      // a host that doesn't send Cache-Control on every path can let a stale
-      // byte-for-byte copy of an old deploy get read here and baked into this
-      // brand-new named cache, so a version bump installs a half-updated shell
-      // instead of the new one.
-      fetch(url, { cache: 'reload' }).then(res => {
-        // Skip anything that redirected — see the note above.
-        if (res.ok && !res.redirected) return c.put(url, res);
-      }).catch(() => { /* offline install — best effort, network fetch will retry later */ })
-    ))).then(() => self.skipWaiting())
+    caches.open(CACHE).then(async c => {
+      // Left unwrapped: a rejection here fails the whole install, so the
+      // browser discards this worker instead of activating one with a
+      // silently incomplete shell — the next registration attempt (next
+      // load, or the browser's own update check) tries again from scratch.
+      await Promise.all(REQUIRED_SHELL.map(url => precache(c, url)));
+      await Promise.all(OPTIONAL_SHELL.map(url =>
+        precache(c, url).catch(() => { /* icon fetch failed — cosmetic, not fatal */ })
+      ));
+    }).then(() => self.skipWaiting())
   );
 });
 
@@ -104,7 +126,13 @@ self.addEventListener('fetch', e => {
         }
         return res;
       }).catch(() =>
-        e.request.mode === 'navigate' ? caches.match('./') : Response.error()
+        e.request.mode === 'navigate'
+          // .then(r => r || Response.error()): never hand `respondWith` an
+          // undefined resolution — a navigation while offline before './'
+          // ever made it into this cache would otherwise surface as the
+          // browser's own connection-error page instead of a clean failure.
+          ? caches.match('./').then(r => r || Response.error())
+          : Response.error()
       )
     )
   );
