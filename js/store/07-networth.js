@@ -55,7 +55,7 @@
       const remaining = Math.max(0, B * grow - P * (grow - 1) / i);
       interest = Math.max(0, P * (months - 1) + remaining * (1 + i) - B);
     }
-    const d = new Date(); d.setMonth(d.getMonth() + months);
+    const d = addMonths(new Date(), months);
     return { months, date: d.toISOString().slice(0, 10), interest, balance: B };
   }
 
@@ -89,7 +89,7 @@
       });
       let date = null;
       if (!unknown && monthsMax != null) {
-        const d = new Date(); d.setMonth(d.getMonth() + monthsMax);
+        const d = addMonths(new Date(), monthsMax);
         date = d.toISOString().slice(0, 10);
       }
       return {
@@ -140,7 +140,7 @@
         if (it.balance <= 0.005) { it.balance = 0; freed += it.payment; order.push({ name: it.name, month: months }); }
       }
     }
-    const d = new Date(); d.setMonth(d.getMonth() + months);
+    const d = addMonths(new Date(), months);
     return { months, interest, date: d.toISOString().slice(0, 10), order };
   }
   /* Side-by-side snowball vs. avalanche, with a shared extra-payment pool so

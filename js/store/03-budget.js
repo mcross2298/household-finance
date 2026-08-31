@@ -66,7 +66,7 @@
     let months = null, projected = null;
     if (remaining > 0 && (+g.monthly || 0) > 0) {
       months = Math.ceil(remaining / +g.monthly);
-      const d = new Date(); d.setMonth(d.getMonth() + months);
+      const d = addMonths(new Date(), months);
       projected = d.toISOString().slice(0, 10);
     }
     return { remaining, pct, months, projected };
@@ -109,7 +109,7 @@
     if (stillToSave === 0) { months = 0; }
     else if (monthly > 0) { months = Math.ceil(stillToSave / monthly); }
     if (months != null) {
-      const d = new Date(); d.setMonth(d.getMonth() + months);
+      const d = addMonths(new Date(), months);
       readyBy = d.toISOString().slice(0, 10);
       vsTarget = readyBy <= h.targetDate ? 'ON TRACK' : 'BEHIND';
     }

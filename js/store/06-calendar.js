@@ -166,7 +166,7 @@
   function markInsightsNudged(items) {
     for (const i of items) data.reminders.insightLog[i.key] = todayIso();
     // keep the log from growing forever — entries older than 6 months age out
-    const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - 6);
+    const cutoff = addMonths(new Date(), -6);
     const cutoffIso = cutoff.toISOString().slice(0, 10);
     for (const k of Object.keys(data.reminders.insightLog)) {
       if (data.reminders.insightLog[k] < cutoffIso) delete data.reminders.insightLog[k];

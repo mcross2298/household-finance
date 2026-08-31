@@ -8,7 +8,7 @@
     members, addMember, renameMember, removeMember,
     load, save, reset, replace, startFresh,
     touchTransactions, needsExport, markExported,
-    fmt$, fmtPct, fmtDate, fmtMonth, usDate, isoFromUs, thisMonth, MONTHS,
+    fmt$, fmtPct, fmtDate, fmtMonth, usDate, isoFromUs, thisMonth, addMonths, MONTHS,
     budgetTotal, incomeTotal, surplus, savingsRate,
     budgetByCategory, budgetByPerson,
     txInMonth, spendByCategory, spendByWho, spendByDay, monthsWithData,
