@@ -47,10 +47,34 @@
     const near = (a, b, eps) => Math.abs(a - b) <= (eps == null ? 0.01 : eps);
 
     try {
-    /* formatting */
+    /* formatting — js/store/01-format.js is byte-identical with the sibling
+       repo (roadmap F-I3); these assertions run in both, so a behavioral
+       regression in the shared money-math is caught even where the sync-drift
+       gate's textual diff can't see one (or where two repos' copies could
+       silently diverge in behavior without a textual difference to flag). */
     t('fmt$ rounds and signs', S.fmt$(-1234.5, 0) === '−$1,235' && S.fmt$(12.345, 2) === '$12.35', S.fmt$(-1234.5, 0));
+    t('fmt$ defaults to 2 decimals under 1000, 0 at/above', S.fmt$(999) === '$999.00' && S.fmt$(1000) === '$1,000', S.fmt$(999) + ' / ' + S.fmt$(1000));
+    t('fmt$ treats null/NaN as em dash', S.fmt$(null) === '—' && S.fmt$(NaN) === '—', S.fmt$(null));
+    t('fmtPct defaults to 1 decimal, honors an override', S.fmtPct(0.5) === '50.0%' && S.fmtPct(0.256, 0) === '26%', S.fmtPct(0.5));
+    t('fmtPct treats null/NaN as em dash', S.fmtPct(null) === '—' && S.fmtPct(NaN) === '—', S.fmtPct(null));
+    t('fmtDate spells the month, no leading zero on the day', S.fmtDate('2026-01-09') === 'Jan 9, 2026', S.fmtDate('2026-01-09'));
+    t('fmtDate treats a falsy iso as em dash', S.fmtDate('') === '—' && S.fmtDate(null) === '—', S.fmtDate(''));
+    t('fmtMonth spells the month, no day', S.fmtMonth('2026-07') === 'Jul 2026', S.fmtMonth('2026-07'));
     t('isoFromUs parses 2-digit years', S.isoFromUs('7/3/26') === '2026-07-03', S.isoFromUs('7/3/26'));
+    t('isoFromUs parses 4-digit years and pads single digits', S.isoFromUs('1/2/2026') === '2026-01-02', S.isoFromUs('1/2/2026'));
+    t('isoFromUs rejects unparseable input', S.isoFromUs('not a date') === null, S.isoFromUs('not a date'));
     t('usDate round-trips', S.usDate('2026-07-03') === '07/03/2026', S.usDate('2026-07-03'));
+    t('thisMonth is a YYYY-MM string', /^\d{4}-\d{2}$/.test(S.thisMonth()), S.thisMonth());
+    /* addMonths — pins the bug this file's own monthsAgoYm() helper hit on
+       2026-08-31: naive d.setMonth(d.getMonth() - 2) rolled June 30 (2026's
+       actual "2 months before Aug 31") forward into July 1, because June
+       only has 30 days and JS spills the extra day into the next month. */
+    const ymd = d => d.toISOString().slice(0, 10);
+    t('addMonths clamps into a shorter month (non-leap Feb)', ymd(S.addMonths(new Date(2026, 0, 31), 1)) === '2026-02-28', ymd(S.addMonths(new Date(2026, 0, 31), 1)));
+    t('addMonths clamps into a shorter month (leap Feb)', ymd(S.addMonths(new Date(2024, 0, 31), 1)) === '2024-02-29', ymd(S.addMonths(new Date(2024, 0, 31), 1)));
+    t('addMonths subtracts across a shorter month without overflow', ymd(S.addMonths(new Date(2026, 7, 31), -2)) === '2026-06-30', ymd(S.addMonths(new Date(2026, 7, 31), -2)));
+    t('addMonths crosses a year boundary', ymd(S.addMonths(new Date(2026, 11, 15), 2)) === '2027-02-15', ymd(S.addMonths(new Date(2026, 11, 15), 2)));
+    t('addMonths leaves a mid-month day untouched', ymd(S.addMonths(new Date(2026, 5, 15), 3)) === '2026-09-15', ymd(S.addMonths(new Date(2026, 5, 15), 3)));
 
     /* budget & derived */
     t('budgetTotal = sum of lines', near(S.budgetTotal(), S.data.budget.reduce((s, b) => s + b.monthly, 0)));
@@ -107,7 +131,7 @@
         { id: S.uid(), date, category: 'Internet & Streaming', description: desc, amount, who: 'Shared', account: 'Test', notes: '' });
       const today = new Date();
       const iso = d => d.toISOString().slice(0, 10);
-      const monthsAgo = n => { const d = new Date(today); d.setMonth(d.getMonth() - n); return iso(d); };
+      const monthsAgo = n => iso(S.addMonths(today, -n));
 
       // Stable monthly subscription, last charge recent (~2 weeks ago): 'ok'.
       S.data.transactions = S.data.transactions.filter(t => t.description !== 'STREAMFLIX');
@@ -205,7 +229,7 @@
        when it runs. */
     (function () {
       const iso = d => d.toISOString().slice(0, 10);
-      const monthsAgoYm = n => { const d = new Date(); d.setMonth(d.getMonth() - n); return iso(d).slice(0, 7); };
+      const monthsAgoYm = n => iso(S.addMonths(new Date(), -n)).slice(0, 7);
 
       // Debt: verified against the amortization formula directly, not
       // against debtPayoff() — that answers a different question

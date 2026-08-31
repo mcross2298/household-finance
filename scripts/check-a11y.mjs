@@ -27,11 +27,19 @@ const PORT = +(process.env.PORT || 8099);
 const ROOT = process.cwd();
 
 /* Known-good exemptions, each with a reason. Anything not listed here that
-   comes in under 44px fails the build. */
+   comes in under 44px fails the build.
+   The 'tag' field matches el.tagName (SVG tagName is case-preserved, e.g.
+   'path'/'rect'), not the className fallback — an SVG element's className
+   is an SVGAnimatedString, whose .toString() is always the literal string
+   "[object SVGAnimatedString]" rather than the class list, so a naive
+   className-based match exempted every classed SVG shape (roadmap X-I4):
+   charts.js's full-row/full-column hit-rects included, which are large by
+   construction and should stay covered by the real check rather than ride
+   an exemption meant only for whoDonut's data-sized <path> arc segments. */
 const TARGET_EXEMPT = [
-  { match: /(^|\s)A$/, why: 'inline link inside a sentence — exempt under WCAG 2.5.8 (Inline)' },
-  { match: /INPUT/, why: 'checkbox whose .checkline label is itself a 44px target' },
-  { match: /SVGAnimatedString/, why: 'chart segment sized by the data it encodes; the 44px legend button is the equivalent target' }
+  { field: 'cls', match: /(^|\s)A$/, why: 'inline link inside a sentence — exempt under WCAG 2.5.8 (Inline)' },
+  { field: 'cls', match: /INPUT/, why: 'checkbox whose .checkline label is itself a 44px target' },
+  { field: 'tag', match: /^path$/, why: 'donut chart segment sized by the data it encodes; the 44px legend button (button.legend-item, min-height:44px) is the equivalent target and always co-renders when the arc is clickable' }
 ];
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
@@ -123,7 +131,7 @@ for (const theme of ['light', 'dark']) {
           }
         }
         if (el.matches('button,a[href],input,select,[role=button]') && (r.height < 44 || r.width < 44)) {
-          targets.push({ cls: (el.className.toString() || el.tagName).slice(0, 40),
+          targets.push({ cls: (el.className.toString() || el.tagName).slice(0, 40), tag: el.tagName,
             h: Math.round(r.height), w: Math.round(r.width),
             label: (el.textContent || el.getAttribute('aria-label') || el.id || '').trim().slice(0, 30) });
         }
@@ -135,7 +143,7 @@ for (const theme of ['light', 'dark']) {
       failures.push(`[contrast] ${vp.width}px ${theme} #/${route} .${c.cls} — ${c.ratio}:1, needs ${c.need} (${c.size}px "${c.text}")`);
     }
     for (const t of found.targets) {
-      if (TARGET_EXEMPT.some(e => e.match.test(t.cls))) continue;
+      if (TARGET_EXEMPT.some(e => e.match.test(e.field === 'tag' ? t.tag : t.cls))) continue;
       failures.push(`[target] ${vp.width}px ${theme} #/${route} .${t.cls} — ${t.h}x${t.w}px, needs 44 ("${t.label}")`);
     }
   }

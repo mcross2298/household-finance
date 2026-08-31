@@ -31,4 +31,19 @@
     return y + '-' + String(+m[1]).padStart(2, '0') + '-' + String(+m[2]).padStart(2, '0');
   }
   const thisMonth = () => new Date().toISOString().slice(0, 7);
+  /* Adds `months` calendar months to `date`, clamping to the target month's
+     last valid day instead of overflowing into the month after it — the
+     naive `d.setMonth(d.getMonth() + n)` rolls Jan 31 + 1 month into early
+     March (Feb has no 31st, so JS spills the extra days forward), not the
+     Feb 28/29 a calendar would show. Used everywhere a projected/payoff date
+     is computed from "N months from now". */
+  function addMonths(date, months) {
+    const d = new Date(date);
+    const day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + months);
+    const daysInTarget = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, daysInTarget));
+    return d;
+  }
 
