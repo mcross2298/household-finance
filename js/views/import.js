@@ -11,6 +11,17 @@
   let sourceName = '';
   let whoTouched = false; // has the user set Who (bulk or per-row) for this import yet?
 
+  /* Pull-to-refresh reloading the app out from under a staged review (rows
+     extracted, categories corrected, Who assigned) silently discards all of
+     it — CSS contains the gesture itself (see styles.css), but any reload or
+     tab close while a review is staged still needs this net, since neither
+     is stopped by overscroll-behavior alone. */
+  window.addEventListener('beforeunload', e => {
+    if (!pending) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
   Views.import = function (root) {
     if (pending) return renderReview(root);
     const batches = Store.data.importBatches || [];

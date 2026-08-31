@@ -142,6 +142,12 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+/* Contains the browser's pull-to-refresh gesture to genuine top-of-page pulls
+   instead of letting it fire from inside a scrolled container (e.g. the
+   Import review table) and reload the app out from under whatever's staged
+   there — see js/views/import.js's beforeunload guard for the other half of
+   this. */
+html, body { overscroll-behavior-y: contain; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
