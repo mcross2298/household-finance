@@ -3,7 +3,7 @@
    often redirect the latter to the former, and caching (then replaying) a
    redirected Response for a navigation is what Chrome's install check flags as
    "Response served by service worker has redirections". */
-const CACHE = 'household-finance-v9';
+const CACHE = 'household-finance-v10';
 const SHELL = [
   './',
   './manifest.json',
@@ -48,7 +48,12 @@ const SHELL = [
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE).then(c => Promise.all(SHELL.map(url =>
-      fetch(url).then(res => {
+      // cache: 'reload' bypasses the browser's ordinary HTTP cache — without it,
+      // a host that doesn't send Cache-Control on every path can let a stale
+      // byte-for-byte copy of an old deploy get read here and baked into this
+      // brand-new named cache, so a version bump installs a half-updated shell
+      // instead of the new one.
+      fetch(url, { cache: 'reload' }).then(res => {
         // Skip anything that redirected — see the note above.
         if (res.ok && !res.redirected) return c.put(url, res);
       }).catch(() => { /* offline install — best effort, network fetch will retry later */ })
