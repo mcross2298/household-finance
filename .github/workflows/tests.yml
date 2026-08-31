@@ -52,6 +52,21 @@ jobs:
       - name: Contrast and touch targets, every route x both themes
         run: node scripts/check-a11y.mjs
 
+  start-fresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright (CI-only)
+        run: |
+          npm init -y
+          npm install --no-save playwright@^1
+          npx playwright install --with-deps chromium
+      - name: Start fresh leaves a coherent single-member state (H-I4)
+        run: node scripts/check-start-fresh.mjs
+
   doc-drift:
     runs-on: ubuntu-latest
     steps:
