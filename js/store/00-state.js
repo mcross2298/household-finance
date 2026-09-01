@@ -161,7 +161,12 @@
           { id: uid(), vendor: 'Venue (final payment)', due: addMonths(3), amount: 2500, paid: false },
           { id: uid(), vendor: 'Catering deposit', due: addMonths(1), amount: 800, paid: true }
         ]
-      }
+      },
+      /* AI Assistant weekly recaps, keyed by the ISO date of that week's
+         Monday — written client-side the first time someone asks the
+         "this week's recap" question, then reused until a new week starts.
+         Rides along in the same JSON blob everything else syncs through. */
+      recaps: {}
     };
   }
 
@@ -184,7 +189,7 @@
     // first time UI code reads Store.data.reminders.*, instead of healing
     // now while replace()'s try/catch can still catch it.
     data.reminders = data.reminders || { enabled: false, daysAhead: 3, log: {} };
-    if (v >= 12) return;
+    if (v >= 13) return;
     if (v < 2) {
       data.rules = data.rules || [];
       data.importBatches = data.importBatches || [];
@@ -237,7 +242,10 @@
     if (v < 12) {
       for (const r of data.rules) if (!('tag' in r)) r.tag = null;
     }
-    data.version = 12;
+    if (v < 13) {
+      data.recaps = data.recaps || {};
+    }
+    data.version = 13;
     save();
   }
   function save() {
@@ -288,7 +296,8 @@
         pmiRate: 0.75, closingPct: 4, scenarios: []
       },
       invest: { rothLimit: 7500, rothYear: now.getFullYear(), roth: { You: 0 }, hysa: { balance: 0, deposit: 0, apys: [3.0, 3.8, 4.5] }, payFrequency: 'biweekly' },
-      wedding: { date: '', vendors: [] }
+      wedding: { date: '', vendors: [] },
+      recaps: {}
     };
   }
   function startFresh() { data = emptyState(); save(); }

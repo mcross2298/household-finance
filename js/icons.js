@@ -38,6 +38,7 @@
     save: wrap('<path d="M5 4h10.5L20 8.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="7"/>'),
     up: wrap('<path d="M12 19V6"/><path d="M6.5 11.5 12 6l5.5 5.5"/>'),
     down: wrap('<path d="M12 5v13"/><path d="M6.5 12.5 12 18l5.5-5.5"/>'),
-    split: wrap('<path d="M12 3v6"/><path d="M12 9c0 3-5 2-5 6v6"/><path d="M12 9c0 3 5 2 5 6v6"/>')
+    split: wrap('<path d="M12 3v6"/><path d="M12 9c0 3-5 2-5 6v6"/><path d="M12 9c0 3 5 2 5 6v6"/>'),
+    ask: wrap('<path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="12.5" x2="13" y2="12.5"/>')
   };
 })();
