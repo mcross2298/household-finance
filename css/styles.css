@@ -531,6 +531,16 @@ input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; accent-color
 .budget-name { font-weight: 600; font-size: .92rem; display: block; }
 .budget-meta { font-size: .74rem; color: var(--ink-3); }
 .budget-row b { font-variant-numeric: tabular-nums; }
+.flex-pool { border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); padding: 10px 12px 12px; margin-bottom: 10px; }
+.flex-pool-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 4px 8px; font-weight: 700; font-size: .86rem; }
+.flex-pool-head svg { width: 15px; height: 15px; vertical-align: -2px; margin-right: 4px; }
+.flex-pool-list { background: var(--surface); border-radius: 8px; }
+.flex-pool-list .budget-row { padding: 8px 8px; min-height: 44px; }
+.flex-pool-list .budget-row:last-child { border-bottom: none; }
+.flex-move-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.flex-move-row .select { flex: 1 1 120px; }
+.flex-move-row .input.num { flex: 0 0 90px; }
+.flex-move-arrow { color: var(--ink-3); flex-shrink: 0; }
 
 /* ---------- goals ---------- */
 .goal-grid { display: grid; gap: 14px; }

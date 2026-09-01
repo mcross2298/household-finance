@@ -364,6 +364,49 @@
     return t;
   }
 
+  /* Flex budgeting: a Discretionary line can opt into a named pool, scoped to
+     its section (a group name is only unique within a given section, so two
+     different members can each have their own "Everyday" pool). The pool's
+     total is just the sum of its lines' monthly figures — moving money
+     between lines is a zero-sum transfer, not a separate allocation to
+     track, so budgetTotal()/budgetByPerson() need no changes to stay
+     correct, and the shape here doesn't depend on how many sections the
+     household's roster has. */
+  function flexGroups() {
+    const groups = {};
+    for (const b of data.budget) {
+      if (b.type !== 'Discretionary' || !b.flexGroup) continue;
+      const key = b.section + '|' + b.flexGroup;
+      (groups[key] = groups[key] || { section: b.section, name: b.flexGroup, lines: [] }).lines.push(b);
+    }
+    return Object.values(groups)
+      .map(g => ({ section: g.section, name: g.name, lines: g.lines,
+        pool: g.lines.reduce((s, b) => s + (+b.monthly || 0), 0) }))
+      .sort((a, b) => a.section === b.section ? a.name.localeCompare(b.name) : 0);
+  }
+  /* Existing pool names in a section, for the "join an existing pool" datalist
+     on the budget-line form. */
+  function flexGroupNames(section) {
+    return [...new Set(data.budget
+      .filter(b => b.type === 'Discretionary' && b.section === section && b.flexGroup)
+      .map(b => b.flexGroup))].sort();
+  }
+  /* Moves `amount` from one line to another in the same flex pool. Refuses a
+     move that would take the source line negative, or that isn't actually
+     within one pool — the pool's total is unaffected either way. */
+  function moveFlexAmount(fromId, toId, amount) {
+    const from = data.budget.find(b => b.id === fromId);
+    const to = data.budget.find(b => b.id === toId);
+    amount = Math.round((+amount || 0) * 100) / 100;
+    if (!from || !to || from.id === to.id || !from.flexGroup || amount <= 0) return false;
+    if (from.flexGroup !== to.flexGroup || from.section !== to.section) return false;
+    if ((+from.monthly || 0) - amount < 0) return false;
+    from.monthly = Math.round(((+from.monthly || 0) - amount) * 100) / 100;
+    to.monthly = Math.round(((+to.monthly || 0) + amount) * 100) / 100;
+    save();
+    return true;
+  }
+
   /* THE number: what's genuinely left to spend this month — budget (plus any
      envelope rollover), minus what has posted, minus Fixed bills that haven't
      hit yet (so rent money never looks spendable just because rent hasn't
