@@ -39,6 +39,7 @@ const SHELL = [
   './js/views/summary.js',
   './js/views/transactions.js',
   './js/views/import.js',
+  './js/views/assistant.js',
   './js/views/budget.js',
   './js/views/calendar.js',
   './js/views/networth.js',

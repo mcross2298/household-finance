@@ -15,6 +15,8 @@
       blurb: 'Every transaction — searchable, filterable, and attributed to a person or Shared. Split one purchase across multiple categories when it doesn’t fit in just one.' },
     { id: 'import', route: 'import', icon: 'upload', title: 'Import',
       blurb: 'Pull in a bank CSV or PDF statement — merchants you’ve categorized before are filled in and collapsed, so review is only the rows that actually need you. Build and edit categorization rules yourself, previewed live against your last 90 days before you save one.' },
+    { id: 'assistant', route: 'assistant', icon: 'ask', title: 'Ask',
+      blurb: 'Ask a plain-English question about your spending, goals, or bills (⌘J) and get an answer generated from your own budget data — plus a weekly recap on the Executive Summary. Nothing leaves the app except the question and an aggregated summary.' },
     { id: 'budget', route: 'budget', icon: 'grid', title: 'Budget',
       blurb: 'Recurring income and spending lines, split across the household or Shared — group related Discretionary lines into a shared flex pool to move money between them without editing two numbers.' },
     { id: 'calendar', route: 'calendar', icon: 'calendar', title: 'Bill Calendar',

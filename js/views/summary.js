@@ -26,6 +26,7 @@
     const debtCount = snap.debt.accounts;
     const debtTotal = snap.debt.total;
     const planTiles = renderPlanTiles(S);
+    const recap = window.Assistant ? Assistant.latestRecap() : null;
 
     root.innerHTML = `
       <div class="page summary-page">
@@ -75,6 +76,12 @@
         <section class="card insights-card">
           <div class="card-head"><h2>What needs attention</h2></div>
           ${UI.insightList(insights)}
+        </section>
+
+        <section class="card">
+          <div class="card-head"><h2>This week's recap</h2><span class="card-note">from the AI assistant</span></div>
+          ${recap ? `<p>${App.esc(recap.text)}</p><div class="card-foot"><a class="card-link" href="#/assistant">Ask something else →</a></div>`
+            : `<p class="empty">No recap yet this week. <a href="#/assistant">Ask for one →</a></p>`}
         </section>
 
         <div class="two-col">

@@ -4,6 +4,7 @@
 
   const TITLES = {
     home: 'Dashboard', summary: 'Executive Summary', transactions: 'Transactions', import: 'Import',
+    assistant: 'Ask',
     budget: 'Budget', calendar: 'Bill Calendar', goals: 'Savings Goals',
     house: 'House Plan', invest: 'Investments', wedding: 'Wedding Payoff',
     networth: 'Net Worth', debt: 'Debt Payoff Plan', forecast: 'Forecast', backup: 'Export & Backup'
@@ -470,6 +471,14 @@
     if (e.key.toLowerCase() !== 'k' || !(e.metaKey || e.ctrlKey) || e.altKey) return;
     e.preventDefault();
     openSearch();
+  });
+  // ⌘J/Ctrl+J jumps straight to the Ask screen from anywhere, same reach as
+  // ⌘K for search — the assistant is meant to be a keystroke away, not a
+  // menu dig.
+  document.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() !== 'j' || !(e.metaKey || e.ctrlKey) || e.altKey) return;
+    e.preventDefault();
+    location.hash = '#/assistant';
   });
 
   // Static nav icons only need to be stamped in once — the sidebar/bottom-nav
