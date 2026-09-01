@@ -256,4 +256,8 @@
       });
     });
   }
+
+  // Exposed so the command palette (and any other app-wide entry point) can
+  // open this same form from any screen, same pattern as transactions.js.
+  Views.budget.openAdd = function () { editModal(null); };
 })();
