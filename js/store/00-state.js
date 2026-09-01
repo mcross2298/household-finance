@@ -54,7 +54,7 @@
      Dates are anchored to the current month/year so the demo never looks stale. */
   function seed() {
     const b = (name, section, category, type, monthly, notes) =>
-      ({ id: uid(), name, section, category, type, monthly, notes: notes || '' });
+      ({ id: uid(), name, section, category, type, monthly, notes: notes || '', flexGroup: null });
     const acct = (name, kind, type, owner, payment, rate) =>
       ({ id: uid(), name, kind, type, owner, payment: payment || 0, rate: rate || 0 });
 
@@ -184,7 +184,7 @@
     // first time UI code reads Store.data.reminders.*, instead of healing
     // now while replace()'s try/catch can still catch it.
     data.reminders = data.reminders || { enabled: false, daysAhead: 3, log: {} };
-    if (v >= 10) return;
+    if (v >= 11) return;
     if (v < 2) {
       data.rules = data.rules || [];
       data.importBatches = data.importBatches || [];
@@ -231,7 +231,10 @@
       data.reminders.insightsEnabled = data.reminders.insightsEnabled || false;
       data.reminders.insightLog = data.reminders.insightLog || {};
     }
-    data.version = 10;
+    if (v < 11) {
+      for (const b of data.budget) if (!('flexGroup' in b)) b.flexGroup = null;
+    }
+    data.version = 11;
     save();
   }
   function save() {

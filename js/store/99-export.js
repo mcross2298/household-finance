@@ -28,6 +28,7 @@
     ruleFor, suggestRule, learnRule, guessCategory, categorize, likelyDuplicate,
     matchBudgetLine, budgetLineStatus,
     effectiveBudget, rolloverAdjustmentTotal, autoPostDueBills, underBudgetStreak,
+    flexGroups, flexGroupNames, moveFlexAmount,
     addImportBatch, undoImportBatch, integrityCheck
   };
   load();

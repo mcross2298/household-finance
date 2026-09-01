@@ -16,7 +16,7 @@
     { id: 'import', route: 'import', icon: 'upload', title: 'Import',
       blurb: 'Pull in a bank CSV or PDF statement — merchants you’ve categorized before are filled in and collapsed, so review is only the rows that actually need you.' },
     { id: 'budget', route: 'budget', icon: 'grid', title: 'Budget',
-      blurb: 'Recurring income and spending lines, split across the household or Shared.' },
+      blurb: 'Recurring income and spending lines, split across the household or Shared — group related Discretionary lines into a shared flex pool to move money between them without editing two numbers.' },
     { id: 'calendar', route: 'calendar', icon: 'calendar', title: 'Bill Calendar',
       blurb: 'Upcoming bills with due dates, auto-pay tracking, policy and contract renewals, bill and insight reminders, which paycheck covers each one — plus recurring charges it detects from history that you never declared.' },
     { id: 'goals', route: 'goals', icon: 'target', title: 'Savings Goals',

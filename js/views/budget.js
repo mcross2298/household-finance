@@ -38,24 +38,49 @@
     };
 
     const section = sec => S.data.budget.filter(b => b.section === sec);
-    const secBlock = sec => `
+    const lineRow = b => `
+      <li class="budget-row" data-id="${b.id}" role="button" tabindex="0">
+        <div class="budget-main">
+          <span class="budget-name">${App.esc(b.name)}${streakBadge(b)}</span>
+          <span class="budget-meta">${App.esc(b.category)} · ${b.type}${b.dueDay ? ' · due day ' + b.dueDay : ''}${b.cashPay ? ' · cash-pay' : ''}${b.rolloverEnabled ? ' · rollover' : ''}${b.renewalDate ? ' · renews ' + S.fmtDate(b.renewalDate) : ''}${b.notes ? ' · ' + App.esc(b.notes) : ''}</span>
+          ${lineStatus(b)}
+        </div>
+        <b>${S.fmt$(b.monthly, 0)}</b>
+      </li>`;
+    /* A flex pool's total is just the sum of its lines — moving money between
+       them is a zero-sum transfer, so the "Move" control names both ends
+       explicitly rather than a single +/- per line, which would be ambiguous
+       once a pool has more than two lines. */
+    const flexPoolBlock = fp => `
+      <div class="flex-pool">
+        <div class="flex-pool-head">
+          <span>${UI.icon('split')}${App.esc(fp.name)} <span class="card-note">shared flex pool</span></span>
+          <span>${S.fmt$(fp.pool, 0)}/mo</span>
+        </div>
+        <ul class="budget-list flex-pool-list">${fp.lines.map(lineRow).join('')}</ul>
+        <div class="flex-move-row">
+          <select class="select slim flex-from" aria-label="Move money from">${fp.lines.map(b => `<option value="${b.id}">${App.esc(b.name)}</option>`).join('')}</select>
+          <span class="flex-move-arrow" aria-hidden="true">→</span>
+          <select class="select slim flex-to" aria-label="Move money to">${fp.lines.map((b, i) => `<option value="${b.id}"${i === 1 ? ' selected' : ''}>${App.esc(b.name)}</option>`).join('')}</select>
+          <input class="input slim num flex-amt" type="number" min="1" step="1" placeholder="$" aria-label="Amount to move">
+          <button class="btn ghost slim flex-move-btn" type="button">Move</button>
+        </div>
+      </div>`;
+    const secBlock = sec => {
+      const lines = section(sec);
+      const pools = S.flexGroups().filter(fp => fp.section === sec);
+      const grouped = new Set(pools.flatMap(fp => fp.lines.map(b => b.id)));
+      const ungrouped = lines.filter(b => !grouped.has(b.id));
+      return `
       <div class="budget-sec" id="budget-sec-${sec}">
         <div class="budget-sec-head">
           <h3><span class="swatch" style="background:${Charts.whoColor(sec)}"></span>${App.esc(sec)}</h3>
-          <span>${S.fmt$(section(sec).reduce((s, b) => s + (+b.monthly || 0), 0), 0)}/mo</span>
+          <span>${S.fmt$(lines.reduce((s, b) => s + (+b.monthly || 0), 0), 0)}/mo</span>
         </div>
-        <ul class="budget-list">
-          ${section(sec).map(b => `
-            <li class="budget-row" data-id="${b.id}" role="button" tabindex="0">
-              <div class="budget-main">
-                <span class="budget-name">${App.esc(b.name)}${streakBadge(b)}</span>
-                <span class="budget-meta">${App.esc(b.category)} · ${b.type}${b.dueDay ? ' · due day ' + b.dueDay : ''}${b.cashPay ? ' · cash-pay' : ''}${b.rolloverEnabled ? ' · rollover' : ''}${b.renewalDate ? ' · renews ' + S.fmtDate(b.renewalDate) : ''}${b.notes ? ' · ' + App.esc(b.notes) : ''}</span>
-                ${lineStatus(b)}
-              </div>
-              <b>${S.fmt$(b.monthly, 0)}</b>
-            </li>`).join('')}
-        </ul>
+        ${pools.map(flexPoolBlock).join('')}
+        <ul class="budget-list">${ungrouped.map(lineRow).join('')}</ul>
       </div>`;
+    };
 
     root.innerHTML = `
       <div class="page">
@@ -153,6 +178,17 @@
         const b = S.data.budget.find(x => x.id === li.dataset.id);
         if (b) editModal(b);
       }));
+    root.querySelectorAll('.flex-pool').forEach(pool => {
+      pool.querySelector('.flex-move-btn').addEventListener('click', () => {
+        const fromId = pool.querySelector('.flex-from').value;
+        const toId = pool.querySelector('.flex-to').value;
+        const amt = parseFloat(pool.querySelector('.flex-amt').value);
+        if (fromId === toId) return App.toast('Pick two different lines', 'warn');
+        if (isNaN(amt) || amt <= 0) return App.toast('Enter an amount to move', 'warn');
+        if (!S.moveFlexAmount(fromId, toId, amt)) return App.toast('Not enough left in that line', 'warn');
+        App.render();
+      });
+    });
 
     const incoming = App.routeParams();
     if (incoming.section) {
@@ -217,6 +253,10 @@
           Cash-pay — no statement line ever arrives, so post it automatically on the due day</label>
         <label class="span2 checkline" id="b-rollover-wrap"><input type="checkbox" id="b-rollover"${v.rolloverEnabled ? ' checked' : ''}>
           Roll unspent (or overspent) budget into next month</label>
+        <label class="span2" id="b-flexgroup-wrap">Flex group (optional)
+          <input class="input" id="b-flexgroup" list="b-flexgroup-list" value="${App.esc(v.flexGroup || '')}" placeholder="e.g. Everyday — share a pool with other Discretionary lines">
+          <datalist id="b-flexgroup-list"></datalist>
+        </label>
       </div>
       <div class="btn-row">
         <button class="btn gold" id="b-save">${isNew ? 'Add' : 'Save'}</button>
@@ -227,9 +267,16 @@
       const type = g('#b-type').value;
       g('#b-cashpay-wrap').style.display = type === 'Fixed' ? '' : 'none';
       g('#b-rollover-wrap').style.display = type === 'Discretionary' ? '' : 'none';
+      g('#b-flexgroup-wrap').style.display = type === 'Discretionary' ? '' : 'none';
+    };
+    const refreshFlexList = () => {
+      g('#b-flexgroup-list').innerHTML = Store.flexGroupNames(g('#b-sec').value)
+        .map(n => `<option value="${App.esc(n)}">`).join('');
     };
     g('#b-type').addEventListener('change', syncTypeToggles);
+    g('#b-sec').addEventListener('change', refreshFlexList);
     syncTypeToggles();
+    refreshFlexList();
     g('#b-save').addEventListener('click', () => {
       const name = g('#b-name').value.trim();
       const monthly = parseFloat(g('#b-monthly').value);
@@ -244,6 +291,7 @@
         renewalDate: g('#b-renewal').value || null,
         cashPay: type === 'Fixed' && g('#b-cashpay').checked,
         rolloverEnabled: type === 'Discretionary' && g('#b-rollover').checked,
+        flexGroup: type === 'Discretionary' ? (g('#b-flexgroup').value.trim() || null) : null,
         notes: g('#b-notes').value.trim()
       };
       if (isNew) Store.data.budget.push(next); else Object.assign(b, next);
