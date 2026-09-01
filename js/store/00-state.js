@@ -184,7 +184,7 @@
     // first time UI code reads Store.data.reminders.*, instead of healing
     // now while replace()'s try/catch can still catch it.
     data.reminders = data.reminders || { enabled: false, daysAhead: 3, log: {} };
-    if (v >= 11) return;
+    if (v >= 12) return;
     if (v < 2) {
       data.rules = data.rules || [];
       data.importBatches = data.importBatches || [];
@@ -234,7 +234,10 @@
     if (v < 11) {
       for (const b of data.budget) if (!('flexGroup' in b)) b.flexGroup = null;
     }
-    data.version = 11;
+    if (v < 12) {
+      for (const r of data.rules) if (!('tag' in r)) r.tag = null;
+    }
+    data.version = 12;
     save();
   }
   function save() {

@@ -54,6 +54,7 @@
     if (params.shared) { App.clearRouteParams(); consumeSharedFile(root); }
     const batches = Store.data.importBatches || [];
     const rules = Store.data.rules || [];
+    const suggested = rules.length ? [] : Store.suggestedRuleMerchants(3);
     root.innerHTML = `
       <div class="page">
         <div class="page-head"><h1>Import</h1></div>
@@ -96,19 +97,38 @@
           </ul>
         </section>` : ''}
 
-        ${rules.length ? `
         <section class="card">
           <div class="card-head"><h2>Rules</h2><span class="card-note">learned merchants — applied to every import</span></div>
+          ${rules.length ? `
           <ul class="rules-list">
             ${rules.map(r => `
               <li class="rule-row" data-rule="${r.id}">
-                <span class="rule-match">${App.esc(r.match)}</span>
+                <span class="rule-match">${App.esc(r.match)}${r.tag ? ` <span class="rule-tag">${App.esc(r.tag)}</span>` : ''}</span>
                 <select class="select slim" data-rf="category">${App.options(Store.CATEGORIES, r.category)}</select>
                 <select class="select slim" data-rf="who">${App.options(Store.WHO, r.who)}</select>
                 <button class="icon-btn" data-rdel="${r.id}" aria-label="Delete rule">${UI.icon("close")}</button>
               </li>`).join('')}
-          </ul>
-        </section>` : ''}
+          </ul>` : `
+          <p class="empty">${suggested.length
+            ? 'No rules yet — turn a frequent merchant into one:'
+            : 'No rules yet. Categorize a transaction and choose to remember it, or build one from scratch below.'}</p>
+          ${suggested.length ? `<div class="qf-chips">
+            ${suggested.map((s, i) => `<button type="button" class="qf-chip" data-promote="${i}">${App.esc(s.merchant)} → ${App.esc(s.category)} <span class="muted">(${s.count}×)</span></button>`).join('')}
+          </div>` : ''}`}
+          <button class="btn ghost sm" id="rule-new-toggle" type="button" style="margin-top:10px">${UI.icon("plus")}<span id="rule-new-label">New rule</span></button>
+          <div class="rule-builder" id="rule-builder" hidden>
+            <p class="help">If description contains <b>this</b> → set category, attribute to someone, tag it (optional).</p>
+            <div class="form-grid">
+              <label class="span2">Description contains<input class="input" id="rb-match" placeholder="e.g. Target"></label>
+              <label>Category<select class="select" id="rb-cat">${App.options(Store.CATEGORIES)}</select></label>
+              <label>Who<select class="select" id="rb-who">${App.options(Store.WHO)}</select></label>
+              <label class="span2">Tag (optional)<input class="input" id="rb-tag" placeholder="e.g. subscriptions"></label>
+            </div>
+            <div class="rb-preview" id="rb-preview"></div>
+            <div class="btn-row"><button class="btn gold" id="rb-save" type="button">Save rule</button></div>
+          </div>
+          <p class="help">Rules preview live against your last 90 days before you save one.</p>
+        </section>
 
         <section class="card">
           <div class="card-head"><h2>How import works</h2></div>
@@ -158,6 +178,47 @@
         Store.data.rules = Store.data.rules.filter(x => x.id !== btn.dataset.rdel);
         Store.save(); App.render(); App.toast('Rule deleted');
       }));
+    root.querySelectorAll('[data-promote]').forEach(btn =>
+      btn.addEventListener('click', () => {
+        const s = suggested[+btn.dataset.promote];
+        if (!s) return;
+        Store.learnRule(s.match, s.category, s.who);
+        Store.save(); App.render(); App.toast('Rule added for ' + s.merchant);
+      }));
+    const rbToggle = root.querySelector('#rule-new-toggle');
+    const rbPanel = root.querySelector('#rule-builder');
+    rbToggle.addEventListener('click', () => {
+      rbPanel.hidden = !rbPanel.hidden;
+      root.querySelector('#rule-new-label').textContent = rbPanel.hidden ? 'New rule' : 'Close';
+      if (!rbPanel.hidden) root.querySelector('#rb-match').focus();
+    });
+    const rbMatch = root.querySelector('#rb-match');
+    const rbPreview = root.querySelector('#rb-preview');
+    const renderRulePreview = () => {
+      const text = rbMatch.value.trim();
+      if (!text) { rbPreview.innerHTML = ''; return; }
+      const matches = Store.previewRule({ match: text });
+      if (!matches.length) {
+        rbPreview.innerHTML = '<p class="help">No matches in the last 90 days yet — the rule still saves and applies to future imports.</p>';
+        return;
+      }
+      const shown = matches.slice(0, 5);
+      rbPreview.innerHTML = `<p class="help">${matches.length} match${matches.length === 1 ? '' : 'es'} in the last 90 days:</p>
+        <ul class="rb-match-list">
+          ${shown.map(m => `<li>${Store.fmtDate(m.date)} · ${App.esc(m.description)} · ${Store.fmt$(m.amount, 2)}</li>`).join('')}
+          ${matches.length > shown.length ? `<li class="muted">+ ${matches.length - shown.length} more</li>` : ''}
+        </ul>`;
+    };
+    rbMatch.addEventListener('input', () => { clearTimeout(root._rbT); root._rbT = setTimeout(renderRulePreview, 200); });
+    root.querySelector('#rb-save').addEventListener('click', () => {
+      const text = rbMatch.value.trim();
+      if (!text) return App.toast('Enter what the description should contain', 'warn');
+      const cat = root.querySelector('#rb-cat').value;
+      const who = root.querySelector('#rb-who').value;
+      const tag = root.querySelector('#rb-tag').value.trim();
+      Store.learnRule(text, cat, who, tag);
+      Store.save(); App.render(); App.toast('Rule saved');
+    });
   };
 
   /* Applied to every pending set before review: run each row through the

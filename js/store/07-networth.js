@@ -295,18 +295,23 @@
   function integrityCheck() {
     const issues = [];
     const dateRe = /^\d{4}-\d{2}-\d{2}$/;
-    let badDate = 0, badAmount = 0, badCat = 0, badWho = 0;
+    let badDate = 0, badAmount = 0, badCat = 0, badWho = 0, badSplit = 0;
     const who = WHO();
     for (const t of data.transactions) {
       if (!dateRe.test(t.date || '')) badDate++;
       if (isNaN(+t.amount)) badAmount++;
       if (!CATEGORIES.includes(t.category)) badCat++;
       if (!who.includes(t.who)) badWho++;
+      if (t.splits && t.splits.length) {
+        const sumCents = t.splits.reduce((s, p) => s + Math.round((+p.amount || 0) * 100), 0);
+        if (sumCents !== Math.round((+t.amount || 0) * 100)) badSplit++;
+      }
     }
     if (badDate) issues.push(badDate + ' transaction(s) with an invalid date');
     if (badAmount) issues.push(badAmount + ' transaction(s) with a non-numeric amount');
     if (badCat) issues.push(badCat + ' transaction(s) with a category not on the fixed list');
     if (badWho) issues.push(badWho + ' transaction(s) attributed to someone no longer in the household');
+    if (badSplit) issues.push(badSplit + " transaction(s) whose splits don't add up to the total amount");
     const badBudget = data.budget.filter(b => isNaN(+b.monthly) || +b.monthly < 0 || !CATEGORIES.includes(b.category)).length;
     if (badBudget) issues.push(badBudget + ' budget line(s) with a bad amount or category');
     const badGoal = data.goals.filter(g => isNaN(+g.target) || isNaN(+g.saved) || +g.saved < 0).length;
