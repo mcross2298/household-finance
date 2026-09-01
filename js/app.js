@@ -170,66 +170,119 @@
   const esc = s => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-  /* ---------- global search ---------- */
+  /* ---------- global search + command palette ---------- */
   /* One box that finds transactions, budget lines, goals, and wedding vendors
-     from any screen — "when did we last pay the vet?" without setting filters. */
+     from any screen — "when did we last pay the vet?" without setting filters
+     — and, pinned above those results, runs quick actions (add a transaction,
+     jump to a screen) so the same box that finds things can also do things. */
+  const PALETTE_RECENTS_KEY = 'cf.paletteRecents';
+  const PALETTE_RECENTS_MAX = 6;
+  function paletteRecents() {
+    try { return JSON.parse(localStorage.getItem(PALETTE_RECENTS_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function paletteRemember(id) {
+    const recents = [id].concat(paletteRecents().filter(x => x !== id)).slice(0, PALETTE_RECENTS_MAX);
+    // A device-local UI convenience, not household data — kept out of Store
+    // the same way js/lock.js keeps its own config out of Store.
+    try { localStorage.setItem(PALETTE_RECENTS_KEY, JSON.stringify(recents)); } catch (e) { /* private mode */ }
+  }
+  function paletteActions() {
+    const jumps = Object.keys(TITLES)
+      .filter(r => r !== route())
+      .map(r => ({ id: 'go-' + r, label: 'Jump to ' + TITLES[r], meta: 'Go to screen', run: () => go(r) }));
+    return [
+      { id: 'add-tx', label: 'Add transaction', meta: 'Quick action',
+        run: () => { if (window.Views && Views.transactions && Views.transactions.openAdd) Views.transactions.openAdd(); } },
+      { id: 'add-budget-line', label: 'Add budget line', meta: 'Quick action',
+        run: () => { if (window.Views && Views.budget && Views.budget.openAdd) Views.budget.openAdd(); } }
+    ].concat(jumps);
+  }
   function openSearch() {
     // The keydown listener that triggers this is bound at script load, before
-    // Lock.guard(boot) ever runs, so a stray "/" or a click on the search
+    // Lock.guard(boot) ever runs, so a stray "/"/⌘K or a click on the search
     // button while the PIN gate is up would otherwise open this modal behind
     // it (z-index only, no visible leak) and steal focus off the PIN field —
     // mirroring the same check the hashchange handler already makes below.
     if (window.Lock && Lock.isLocked()) return;
     const m = modal('Search', `
-      <input class="input" id="gs-q" type="search" placeholder="Merchant, bill, goal, vendor…"
-        autocomplete="off" aria-label="Search everything">
-      <div class="gs-results" id="gs-results"><p class="help">Search everything — transactions, budget lines, goals, wedding vendors.</p></div>`);
+      <input class="input" id="gs-q" type="search" placeholder="Search, or run a command…"
+        autocomplete="off" aria-label="Search everything, or run a command">
+      <div class="gs-results" id="gs-results"></div>`);
     const input = m.el.querySelector('#gs-q');
     const box = m.el.querySelector('#gs-results');
     const hit = (title, meta, amount, go) =>
       ({ title, meta, amount, go });
+    const actions = paletteActions();
+    const byId = Object.fromEntries(actions.map(a => [a.id, a]));
+    let selIndex = 0;
+    let hits = [];
+    const applySelection = () => {
+      hits.forEach((el, i) => el.classList.toggle('selected', i === selIndex));
+      if (hits[selIndex]) hits[selIndex].scrollIntoView({ block: 'nearest' });
+    };
+    const runAction = a => { paletteRemember(a.id); m.close(); a.run(); };
     const run = q => {
       q = q.trim().toLowerCase();
-      if (q.length < 2) { box.innerHTML = '<p class="help">Type at least 2 characters.</p>'; return; }
-      const has = s => String(s || '').toLowerCase().includes(q);
       const groups = [];
-      const txs = Store.data.transactions
-        .filter(t => has(t.description) || has(t.account) || has(t.notes) || has(t.category))
-        .sort((a, b) => a.date < b.date ? 1 : -1);
-      if (txs.length) {
-        groups.push(['Transactions', txs.slice(0, 8).map(t =>
-          hit(t.description || '(no description)', Store.fmtDate(t.date) + ' · ' + t.category + ' · ' + t.who,
-            Store.fmt$(t.amount, 2), () => go('transactions', { q: input.value.trim() })))]);
-        if (txs.length > 8) groups[groups.length - 1][1].push(
-          hit('See all ' + txs.length + ' matches →', '', '', () => go('transactions', { q: input.value.trim() })));
+      const matchedActions = q
+        ? actions.filter(a => a.label.toLowerCase().includes(q))
+        : (paletteRecents().map(id => byId[id]).filter(Boolean).length
+            ? paletteRecents().map(id => byId[id]).filter(Boolean)
+            : actions.slice(0, 4));
+      if (matchedActions.length) groups.push(['Actions', matchedActions.slice(0, 8).map(a =>
+        hit(a.label, a.meta, '', () => runAction(a)))]);
+      if (q.length >= 2) {
+        const has = s => String(s || '').toLowerCase().includes(q);
+        const txs = Store.data.transactions
+          .filter(t => has(t.description) || has(t.account) || has(t.notes) || has(t.category))
+          .sort((a, b) => a.date < b.date ? 1 : -1);
+        if (txs.length) {
+          groups.push(['Transactions', txs.slice(0, 8).map(t =>
+            hit(t.description || '(no description)', Store.fmtDate(t.date) + ' · ' + t.category + ' · ' + t.who,
+              Store.fmt$(t.amount, 2), () => go('transactions', { q: input.value.trim() })))]);
+          if (txs.length > 8) groups[groups.length - 1][1].push(
+            hit('See all ' + txs.length + ' matches →', '', '', () => go('transactions', { q: input.value.trim() })));
+        }
+        const lines = Store.data.budget.filter(b => has(b.name) || has(b.category) || has(b.notes));
+        if (lines.length) groups.push(['Budget lines', lines.slice(0, 5).map(b =>
+          hit(b.name, b.section + ' · ' + b.category, Store.fmt$(b.monthly, 0) + '/mo', () => go('budget', { section: b.section })))]);
+        const goals = Store.data.goals.filter(g => has(g.name));
+        if (goals.length) groups.push(['Goals', goals.slice(0, 5).map(g =>
+          hit(g.name, Store.fmt$(g.saved, 0) + ' of ' + Store.fmt$(g.target, 0), '', () => { location.hash = '#/goals'; }))]);
+        const vendors = Store.data.wedding.vendors.filter(v => has(v.vendor));
+        if (vendors.length) groups.push(['Wedding vendors', vendors.slice(0, 5).map(v =>
+          hit(v.vendor, (v.paid ? 'paid' : 'due ' + Store.fmtDate(v.due)), Store.fmt$(v.amount, 0), () => { location.hash = '#/wedding'; }))]);
       }
-      const lines = Store.data.budget.filter(b => has(b.name) || has(b.category) || has(b.notes));
-      if (lines.length) groups.push(['Budget lines', lines.slice(0, 5).map(b =>
-        hit(b.name, b.section + ' · ' + b.category, Store.fmt$(b.monthly, 0) + '/mo', () => go('budget', { section: b.section })))]);
-      const goals = Store.data.goals.filter(g => has(g.name));
-      if (goals.length) groups.push(['Goals', goals.slice(0, 5).map(g =>
-        hit(g.name, Store.fmt$(g.saved, 0) + ' of ' + Store.fmt$(g.target, 0), '', () => { location.hash = '#/goals'; }))]);
-      const vendors = Store.data.wedding.vendors.filter(v => has(v.vendor));
-      if (vendors.length) groups.push(['Wedding vendors', vendors.slice(0, 5).map(v =>
-        hit(v.vendor, (v.paid ? 'paid' : 'due ' + Store.fmtDate(v.due)), Store.fmt$(v.amount, 0), () => { location.hash = '#/wedding'; }))]);
-      if (!groups.length) { box.innerHTML = '<p class="help">No matches for “' + esc(q) + '”.</p>'; return; }
-      box.innerHTML = groups.map(([label, hits]) => `
+      if (!groups.length) {
+        box.innerHTML = q.length < 2
+          ? '<p class="help">Keep typing to search transactions, budget lines, goals, and vendors.</p>'
+          : '<p class="help">No matches for “' + esc(q) + '”.</p>';
+        hits = [];
+        return;
+      }
+      box.innerHTML = groups.map(([label, groupHits]) => `
         <div class="gs-group-label">${label}</div>
-        ${hits.map((h, i) => `<button class="gs-hit" data-g="${esc(label)}" data-i="${i}">
+        ${groupHits.map((h, i) => `<button class="gs-hit" data-g="${esc(label)}" data-i="${i}">
           <span class="gs-hit-main"><span class="gs-hit-title">${esc(h.title)}</span>
           ${h.meta ? `<span class="gs-hit-meta">${esc(h.meta)}</span>` : ''}</span>
           ${h.amount ? `<span class="gs-hit-amt">${esc(h.amount)}</span>` : ''}
         </button>`).join('')}`).join('');
-      const byGroup = Object.fromEntries(groups.map(([label, hits]) => [label, hits]));
-      box.querySelectorAll('.gs-hit').forEach(btn =>
+      const byGroup = Object.fromEntries(groups.map(([label, groupHits]) => [label, groupHits]));
+      hits = Array.prototype.slice.call(box.querySelectorAll('.gs-hit'));
+      hits.forEach(btn =>
         btn.addEventListener('click', () => { m.close(); byGroup[btn.dataset.g][+btn.dataset.i].go(); }));
+      selIndex = 0;
+      applySelection();
     };
     let t;
     input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => run(input.value), 200); });
     input.addEventListener('keydown', e => {
-      if (e.key === 'Enter') { const first = box.querySelector('.gs-hit'); if (first) first.click(); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (hits.length) { selIndex = Math.min(selIndex + 1, hits.length - 1); applySelection(); } }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); if (hits.length) { selIndex = Math.max(selIndex - 1, 0); applySelection(); } }
+      else if (e.key === 'Enter') { if (hits[selIndex]) hits[selIndex].click(); }
     });
     input.focus();
+    run('');
   }
 
   const options = (list, sel) =>
@@ -410,12 +463,24 @@
     e.preventDefault();
     openSearch();
   });
+  // ⌘K/Ctrl+K opens the same box — unlike "/", it works from inside a text
+  // field too (a form's own inputs don't treat it as a printable character),
+  // which is the point: it should work while you're mid-edit somewhere else.
+  document.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() !== 'k' || !(e.metaKey || e.ctrlKey) || e.altKey) return;
+    e.preventDefault();
+    openSearch();
+  });
 
   // Static nav icons only need to be stamped in once — the sidebar/bottom-nav
   // shell isn't re-rendered by the router.
   document.querySelectorAll('[data-icon]').forEach(span => {
     if (window.Icons && Icons[span.dataset.icon]) span.innerHTML = Icons[span.dataset.icon];
   });
+  const paletteHint = document.getElementById('palette-hint');
+  if (paletteHint && !/Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent)) {
+    paletteHint.textContent = 'Ctrl K';
+  }
 
   const fabBtn = document.getElementById('fab-add');
   if (fabBtn) fabBtn.addEventListener('click', () => {
