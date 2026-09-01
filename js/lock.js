@@ -266,6 +266,13 @@
   }
 
   function showGate(onUnlock) {
+    // armWatch's 15s idle-check interval and its visibilitychange listener
+    // can both fire for the same expiry — without this, the second call
+    // re-renders the gate and fires a second concurrent biometric prompt,
+    // whose navigator.credentials.get() rejects (NotAllowedError, since one
+    // is already pending) and reports "Couldn't verify" for a scan that
+    // actually succeeded.
+    if (document.getElementById('lock-root')?.firstChild) return;
     let root = document.getElementById('lock-root');
     if (!root) {
       root = document.createElement('div');
