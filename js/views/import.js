@@ -253,6 +253,10 @@
 
   /* ---------- PDF path ---------- */
   let pdfjsPromise = null;
+  // True for the whole of handlePDF, not just the pdf.js download — guards
+  // against a second drop re-entering while the first is still in flight and
+  // silently overwriting its staged rows.
+  let loadingPdf = false;
   function loadPdfJs() {
     if (window.pdfjsLib) return Promise.resolve();
     if (!pdfjsPromise) {
@@ -267,17 +271,38 @@
     return pdfjsPromise;
   }
 
+  /* Swaps the drop zone into a visibly inert state while pdf.js's one-time
+     download is in flight — the toast this replaces self-dismissed after
+     2.6s while that download can take 20-40s on a slow connection, so the
+     zone looked idle and invited a second drop. */
+  function setDropZoneLoading(root, isLoading) {
+    const zone = root.querySelector('#drop-zone');
+    if (!zone) return;
+    const input = zone.querySelector('#file-input');
+    const heading = zone.querySelector('.drop-inner h2');
+    zone.classList.toggle('loading', isLoading);
+    if (input) input.disabled = isLoading;
+    if (heading) heading.textContent = isLoading ? 'Loading PDF engine…' : 'Drop a statement here';
+  }
+
   async function handlePDF(file, root) {
-    App.toast('Reading PDF…');
+    if (loadingPdf) return;
+    loadingPdf = true;
     try {
-      await loadPdfJs();
-    } catch (e) {
-      return App.modal('PDF reader unavailable', `
-        <p>The PDF engine loads from the network the first time and it couldn't be reached.
-        While offline, use the screenshot route instead: paste the statement image into a
-        Claude chat, ask for standard-schema CSV, and paste it on the Import screen.</p>`);
-    }
-    try {
+      const needsDownload = !window.pdfjsLib;
+      if (needsDownload) setDropZoneLoading(root, true);
+      try {
+        await loadPdfJs();
+      } catch (e) {
+        App.modal('PDF reader unavailable', `
+          <p>The PDF engine loads from the network the first time and it couldn't be reached.
+          While offline, use the screenshot route instead: paste the statement image into a
+          Claude chat, ask for standard-schema CSV, and paste it on the Import screen.</p>`);
+        return;
+      } finally {
+        if (needsDownload) setDropZoneLoading(root, false);
+      }
+      App.toast('Reading PDF…');
       const buf = await file.arrayBuffer();
       const doc = await window.pdfjsLib.getDocument({ data: buf }).promise;
       const lines = [];
@@ -297,11 +322,12 @@
       }
       const rows = extractTxLines(lines);
       if (!rows.length) {
-        return App.modal('No transactions found', `
+        App.modal('No transactions found', `
           <p>Text was extracted from <b>${App.esc(file.name)}</b> but no transaction-shaped
           lines (date + amount) were recognized — some statements are images, not text.</p>
           <p>Fallback: screenshot the statement, paste it into a Claude chat, ask for
           standard-schema CSV, and paste the result on the Import screen.</p>`);
+        return;
       }
       pending = rows;
       whoTouched = false;
@@ -309,6 +335,8 @@
       App.render({ resetScroll: true });
     } catch (e) {
       App.toast('Could not read that PDF', 'warn');
+    } finally {
+      loadingPdf = false;
     }
   }
 
