@@ -105,6 +105,70 @@
     t('rule matches across cities', !!S.ruleFor('GIANT #2 BETHLEHEM PA'));
     t('no false rule match', !S.ruleFor('WAWA 100 EASTON PA'));
 
+    /* visual rule builder — previewRule() + optional tag (Roadmap Phase 1 #4) */
+    (function () {
+      const iso = d => d.toISOString().slice(0, 10);
+      const daysAgo = n => { const d = new Date(); d.setDate(d.getDate() - n); return iso(d); };
+      S.data.transactions.push(
+        { id: S.uid(), date: daysAgo(10), category: 'Shopping', description: 'TESTMART 123 ALLENTOWN', amount: 25, who: 'Shared', account: '', notes: '' },
+        { id: S.uid(), date: daysAgo(120), category: 'Shopping', description: 'TESTMART 456 BETHLEHEM', amount: 30, who: 'Shared', account: '', notes: '' }
+      );
+      const preview = S.previewRule({ match: 'TESTMART' });
+      t('previewRule matches within the last 90 days', preview.length === 1 && preview[0].description.includes('ALLENTOWN'),
+        JSON.stringify(preview));
+      t('previewRule ignores matches older than 90 days', !preview.some(p => p.description.includes('BETHLEHEM')));
+      t('previewRule returns nothing for an empty match', S.previewRule({ match: '' }).length === 0);
+
+      const rule = S.learnRule('TESTMART 123 ALLENTOWN', 'Shopping', 'Alex', 'test-tag');
+      t('learnRule accepts an optional tag', !!rule && rule.tag === 'test-tag', JSON.stringify(rule));
+      S.learnRule('TESTMART 123 ALLENTOWN', 'Shopping', 'Alex');
+      t('re-learning without a tag argument leaves the existing tag untouched',
+        S.ruleFor('TESTMART 123 ALLENTOWN').tag === 'test-tag');
+    })();
+
+    /* empty-state "promote to rule" suggestions */
+    (function () {
+      S.data.transactions.push(
+        { id: S.uid(), date: '2026-08-01', category: 'Dining Out', description: 'REPEATEATS DOWNTOWN', amount: 12, who: 'Shared', account: '', notes: '' },
+        { id: S.uid(), date: '2026-08-08', category: 'Dining Out', description: 'REPEATEATS DOWNTOWN', amount: 14, who: 'Shared', account: '', notes: '' }
+      );
+      const suggestions = S.suggestedRuleMerchants(5);
+      t('suggestedRuleMerchants surfaces a merchant seen 2+ times with no rule yet',
+        suggestions.some(s => s.merchant.toUpperCase().includes('REPEATEATS') && s.category === 'Dining Out'),
+        JSON.stringify(suggestions));
+    })();
+
+    /* split transactions (Roadmap Phase 1 #4) */
+    (function () {
+      const tx = { id: S.uid(), date: '2026-08-15', category: 'Shopping', description: 'TARGET SPLIT TEST', amount: 86.40, who: 'Shared', account: '', notes: '' };
+      S.data.transactions.push(tx);
+      t('applySplit rejects parts that don\'t sum to the transaction total',
+        S.applySplit(tx.id, [{ category: 'Groceries', amount: 40 }, { category: 'Shopping', amount: 40 }]) === null);
+      t('transaction is untouched after a rejected split', tx.amount === 86.40 && tx.category === 'Shopping');
+      const applied = S.applySplit(tx.id, [{ category: 'Groceries', amount: 50.40 }, { category: 'Shopping', amount: 36 }]);
+      t('applySplit accepts a penny-exact split and sets category to the largest part',
+        !!applied && applied.category === 'Groceries' && applied.splits.length === 2, JSON.stringify(applied));
+      t('applySplit never changes the transaction\'s own total', tx.amount === 86.40);
+
+      const csvRows = S.parseCSV(S.exportCSV());
+      const splitRows = csvRows.filter(r => r[2] === 'TARGET SPLIT TEST');
+      t('exportCSV expands a split transaction into one row per split, header untouched',
+        splitRows.length === 2 && splitRows.every(r => /split \d\/2 of/.test(r[6])), JSON.stringify(splitRows));
+      t('exportCSV split rows sum back to the original amount',
+        Math.round(splitRows.reduce((s, r) => s + parseFloat(r[3]), 0) * 100) === 8640, JSON.stringify(splitRows));
+
+      t('integrityCheck flags a split that no longer sums to the total', (() => {
+        tx.splits[0].amount = 999; // corrupt in place, bypassing applySplit's own validation
+        const flagged = S.integrityCheck().some(i => /splits don't add up/.test(i));
+        tx.splits[0].amount = 50.40; // restore before clearSplit below
+        return flagged;
+      })());
+
+      const cleared = S.clearSplit(tx.id);
+      t('clearSplit removes the split and leaves amount/category as a normal transaction',
+        !!cleared && !cleared.splits && cleared.amount === 86.40);
+    })();
+
     /* categorization pipeline — the confidence tier is what the import review
        triages on, so each rung needs to be the one that answers. */
     const conf = d => S.categorize({ description: d, amount: 0 }).confidence;

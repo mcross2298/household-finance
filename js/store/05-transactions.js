@@ -26,13 +26,28 @@
     v = String(v == null ? '' : v);
     return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
   }
-  /* Fixed CSV schema — column order documented in the README. */
+  /* Fixed CSV schema — column order documented in the README. A split
+     transaction (see applySplit()) is exported as one row per split — the
+     spreadsheet sees the real per-category amounts — rather than adding a
+     column: CSV_HEADER stays the stable 7-column contract, and each split
+     row's Notes carries a "split N/M of <short id>" tag so rows from the
+     same purchase can still be traced back to one another after export. */
   function exportCSV() {
     const lines = [CSV_HEADER.join(',')];
     const sorted = [...data.transactions].sort((a, b) => a.date < b.date ? -1 : 1);
     for (const t of sorted) {
-      lines.push([usDate(t.date), t.category, t.description,
-        (+t.amount).toFixed(2), t.who, t.account, t.notes].map(csvEscape).join(','));
+      if (t.splits && t.splits.length) {
+        const parent = t.id.slice(0, 8);
+        t.splits.forEach((s, i) => {
+          const tag = 'split ' + (i + 1) + '/' + t.splits.length + ' of ' + parent;
+          const notes = t.notes ? t.notes + ' — ' + tag : tag;
+          lines.push([usDate(t.date), s.category, t.description,
+            (+s.amount).toFixed(2), t.who, t.account, notes].map(csvEscape).join(','));
+        });
+      } else {
+        lines.push([usDate(t.date), t.category, t.description,
+          (+t.amount).toFixed(2), t.who, t.account, t.notes].map(csvEscape).join(','));
+      }
     }
     return lines.join('\r\n');
   }
@@ -144,14 +159,99 @@
     return { category: '', who: null, confidence: null };
   }
 
-  /* Upsert by key: re-learning a merchant updates the existing rule in place. */
-  function learnRule(desc, category, who) {
+  /* Upsert by key: re-learning a merchant updates the existing rule in place.
+     `tag` is optional free text (e.g. "subscriptions") the visible rule
+     builder lets someone attach to group related rules; omit it (undefined)
+     to leave an existing rule's tag untouched on re-learn. */
+  function learnRule(desc, category, who, tag) {
     const match = merchantKey(desc);
     if (!match || !category) return null;
     let r = data.rules.find(x => x.match === match);
-    if (r) { r.category = category; if (who) r.who = who; }
-    else { r = { id: uid(), match, category, who: who || 'Shared' }; data.rules.push(r); }
+    if (r) {
+      r.category = category; if (who) r.who = who;
+      if (tag !== undefined) r.tag = tag || null;
+    } else {
+      r = { id: uid(), match, category, who: who || 'Shared', tag: tag || null };
+      data.rules.push(r);
+    }
     return r;
+  }
+
+  /* Same match semantics as ruleFor() (exact merchant key, else first-token
+     fallback), but against an arbitrary draft rule instead of a saved one —
+     lets the rule builder show what a rule WOULD match before it's saved.
+     `rule` only needs a `match` (or `contains`, pre-normalization) field. */
+  function previewRule(rule) {
+    const match = merchantKey((rule && (rule.match || rule.contains)) || '');
+    if (!match) return [];
+    const first = match.split(' ')[0];
+    const since = addDays(todayIso(), -90);
+    return data.transactions
+      .filter(t => t.date >= since)
+      .filter(t => {
+        const key = merchantKey(t.description);
+        if (!key) return false;
+        if (key === match) return true;
+        return first.length >= 3 && key.split(' ')[0] === first;
+      })
+      .sort((a, b) => a.date < b.date ? 1 : -1);
+  }
+
+  /* Frequent merchants with no rule yet — the Rules screen's empty state
+     offers these as one-tap "promote to visible rule" chips instead of
+     asking someone to type a rule from scratch for a merchant the app has
+     already seen several times. Majority-vote the category/who from history
+     so the promoted rule starts out right more often than not. */
+  function suggestedRuleMerchants(limit) {
+    const byKey = {};
+    for (const t of data.transactions) {
+      const key = merchantKey(t.description);
+      if (!key || data.rules.some(r => r.match === key)) continue;
+      const b = byKey[key] || (byKey[key] = { key, count: 0, cats: {}, whos: {} });
+      b.count++;
+      b.cats[t.category] = (b.cats[t.category] || 0) + 1;
+      b.whos[t.who] = (b.whos[t.who] || 0) + 1;
+    }
+    const top = obj => Object.entries(obj).sort((a, b) => b[1] - a[1])[0][0];
+    return Object.values(byKey)
+      .filter(b => b.count >= 2)
+      .map(b => ({ match: b.key, merchant: prettyMerchant(b.key), category: top(b.cats), who: top(b.whos), count: b.count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit || 3);
+  }
+
+  /* Splits a transaction's amount across multiple categories (a single
+     Target run that's half Groceries, half Shopping). `parts` must sum,
+     penny-exact, to the transaction's CURRENT amount — the total itself
+     doesn't change, only how it's categorized — so the caller can't silently
+     grow or shrink a transaction while "splitting" it. The transaction's own
+     `category` becomes the largest split's (tie broken by list order), kept
+     in sync so every existing report/view that reads `category` directly
+     still sees a sane single answer without knowing splits exist. */
+  function applySplit(txId, parts) {
+    const t = data.transactions.find(x => x.id === txId);
+    if (!t) return null;
+    const clean = (parts || [])
+      .map(p => ({ category: p.category || '', amount: Math.round((+p.amount || 0) * 100) / 100 }))
+      .filter(p => p.category && p.amount > 0);
+    if (clean.length < 2) return null;
+    const sumCents = clean.reduce((s, p) => s + Math.round(p.amount * 100), 0);
+    if (sumCents !== Math.round((+t.amount || 0) * 100)) return null;
+    let primary = clean[0];
+    for (const p of clean) if (p.amount > primary.amount) primary = p;
+    t.splits = clean;
+    t.category = primary.category;
+    touchTransactions(); save();
+    return t;
+  }
+  /* Reverts a split back to one plain category+amount — the amount was never
+     touched by applySplit(), so there's nothing to restore there. */
+  function clearSplit(txId) {
+    const t = data.transactions.find(x => x.id === txId);
+    if (!t || !t.splits) return null;
+    delete t.splits;
+    touchTransactions(); save();
+    return t;
   }
 
   /* Fuzzy duplicate check: same cents, dates within ±3 days, similar merchant.
