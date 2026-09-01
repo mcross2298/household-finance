@@ -10,6 +10,11 @@ const CACHE = 'household-finance-v12';
 // whole-cache eviction under storage pressure can't take the app shell down
 // alongside whatever scratch content happened to be sitting next to it.
 const RUNTIME_CACHE = 'household-finance-runtime';
+// The one file a share-target POST hands off to the client, in its own
+// unversioned cache for the same reason RUNTIME_CACHE is — a deploy landing
+// mid-share shouldn't drop the file the OS share sheet just handed us.
+const SHARE_CACHE = 'household-finance-share-target';
+const SHARE_KEY = './shared-import';
 const SHELL = [
   './',
   './manifest.json',
@@ -92,10 +97,32 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE && k !== RUNTIME_CACHE).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE && k !== RUNTIME_CACHE && k !== SHARE_CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
+
+/* Web Share Target: the OS share sheet (bank app → Export statement → Share
+   → Household Finance) POSTs the file here as multipart/form-data. Stash it
+   in its own cache — Cache API stores Response objects and a File is already
+   a Blob — then redirect to Import, which reads it back on mount and clears
+   the entry either way, so a share never survives to double-import itself. */
+async function handleShareTarget(request) {
+  try {
+    const formData = await request.formData();
+    const file = formData.get('statement');
+    if (file && typeof file.size === 'number') {
+      const cache = await caches.open(SHARE_CACHE);
+      await cache.put(SHARE_KEY, new Response(file, {
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+          'X-Shared-Filename': encodeURIComponent(file.name || 'shared-statement')
+        }
+      }));
+    }
+  } catch (e) { /* malformed share — Import just opens empty, same as launching it directly */ }
+  return Response.redirect('./#/import?shared=1', 303);
+}
 
 /* Tapping a bill reminder focuses the app on the Bill Calendar; an insight
    nudge instead carries its own data.href (e.g. Forecast, or a filtered
@@ -122,6 +149,10 @@ self.addEventListener('notificationclick', e => {
 /* Cache-first for the shell; runtime-cache successful GETs (e.g. the PDF engine)
    so a second import works offline too. */
 self.addEventListener('fetch', e => {
+  if (e.request.method === 'POST' && new URL(e.request.url).pathname.endsWith('/share-target')) {
+    e.respondWith(handleShareTarget(e.request));
+    return;
+  }
   if (e.request.method !== 'GET') return;
   e.respondWith(
     caches.match(e.request).then(hit => hit ||

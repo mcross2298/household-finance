@@ -268,8 +268,23 @@
   /* Fires when the app opens or returns to the foreground — a local-only PWA
      has no server to push from, so this is the honest maximum: a notification
      where the platform allows it, and the Dashboard insights either way. */
+  /* Store.dueForReminder() is already recomputed here on every visibility
+     change; the count was used for one toast and then discarded. Badging
+     the icon with it turns the app from something you remember to open into
+     something that tells you it needs opening. cf:change re-syncs the badge
+     the moment a bill gets marked paid, without waiting for the next
+     foreground. No server/push infra — setAppBadge/clearAppBadge are local
+     calls the installed PWA makes about itself. */
+  function updateBadge(due) {
+    if (!navigator.setAppBadge || !navigator.clearAppBadge) return;
+    const count = due ? due.length : Store.dueForReminder().length;
+    (count > 0 ? navigator.setAppBadge(count) : navigator.clearAppBadge()).catch(() => {});
+  }
+  document.addEventListener('cf:change', () => updateBadge());
+
   function checkReminders() {
     const due = Store.dueForReminder();
+    updateBadge(due);
     if (!due.length) return;
     const title = due.length === 1 ? 'Bill due: ' + due[0].name : due.length + ' bills due soon';
     const body = due.map(d =>

@@ -7,6 +7,11 @@
   const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
   const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+  // Must match SHARE_CACHE / SHARE_KEY in sw.js — this is the handoff point
+  // for a file the OS share sheet POSTed to the Web Share Target endpoint.
+  const SHARE_CACHE = 'household-finance-share-target';
+  const SHARE_KEY = './shared-import';
+
   let pending = null;   // rows awaiting review
   let sourceName = '';
   let whoTouched = false; // has the user set Who (bulk or per-row) for this import yet?
@@ -22,8 +27,31 @@
     e.returnValue = '';
   });
 
+  /* Landed here from the OS share sheet (bank app → Export statement → Share
+     → Household Finance) — sw.js already stashed the POSTed file in its own
+     cache and redirected to #/import?shared=1. Reads it back, feeds it
+     through the same handleFile() path a manual drop or file picker uses,
+     and clears the cache entry either way so a share never lingers to
+     double-import on a later visit. Fires after this function's synchronous
+     render below, same as any other async continuation onto the router's
+     #view element. */
+  async function consumeSharedFile(root) {
+    if (!window.caches) return;
+    try {
+      const cache = await caches.open(SHARE_CACHE);
+      const res = await cache.match(SHARE_KEY);
+      if (!res) return;
+      await cache.delete(SHARE_KEY);
+      const blob = await res.blob();
+      const name = decodeURIComponent(res.headers.get('X-Shared-Filename') || 'shared-statement');
+      handleFile(new File([blob], name, { type: res.headers.get('Content-Type') || blob.type }), root);
+    } catch (e) { /* nothing pending, or no service worker in this context */ }
+  }
+
   Views.import = function (root) {
     if (pending) return renderReview(root);
+    const params = App.routeParams();
+    if (params.shared) { App.clearRouteParams(); consumeSharedFile(root); }
     const batches = Store.data.importBatches || [];
     const rules = Store.data.rules || [];
     root.innerHTML = `
