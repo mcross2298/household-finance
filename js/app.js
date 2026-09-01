@@ -155,8 +155,13 @@
   }
 
   function exportBanner() {
-    if (!Store.needsExport()) return '';
-    return `<div class="callout warn export-banner">
+    const storageBanner = storageFull
+      ? `<div class="callout warn storage-banner">
+          <span>Not saving to this device. Export a backup now.</span>
+        </div>`
+      : '';
+    if (!Store.needsExport()) return storageBanner;
+    return storageBanner + `<div class="callout warn export-banner">
       <span>You've made changes since your last CSV export.</span>
       <button class="btn ghost sm" id="export-banner-btn">Export CSV</button>
     </div>`;
@@ -169,6 +174,12 @@
   /* One box that finds transactions, budget lines, goals, and wedding vendors
      from any screen — "when did we last pay the vet?" without setting filters. */
   function openSearch() {
+    // The keydown listener that triggers this is bound at script load, before
+    // Lock.guard(boot) ever runs, so a stray "/" or a click on the search
+    // button while the PIN gate is up would otherwise open this modal behind
+    // it (z-index only, no visible leak) and steal focus off the PIN field —
+    // mirroring the same check the hashchange handler already makes below.
+    if (window.Lock && Lock.isLocked()) return;
     const m = modal('Search', `
       <input class="input" id="gs-q" type="search" placeholder="Merchant, bill, goal, vendor…"
         autocomplete="off" aria-label="Search everything">
@@ -232,17 +243,26 @@
      permission grant still fires it instead of it being silently skipped. */
   function notifyLocal(title, opts, done) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.ready
-        .then(reg => reg.showNotification(title, opts))
-        .then(done)
-        .catch(() => { try { new Notification(title, { body: opts.body }); done(); } catch (e) { /* leave unlogged; retry next open */ } });
-    } else {
-      // The plain Notification API (no service worker controlling the page
-      // yet) doesn't support actions/data at all — a plain heads-up is the
-      // honest maximum here.
+    // The plain Notification API doesn't support actions/data at all — a
+    // plain heads-up is the honest maximum whenever no service worker can
+    // show this instead.
+    const plainFallback = () => {
       try { new Notification(title, { body: opts.body }); done(); } catch (e) { /* leave unlogged; retry next open */ }
-    }
+    };
+    if (!navigator.serviceWorker) return plainFallback();
+    // getRegistration() resolves either way (with or without a registration)
+    // instead of hanging, unlike checking .controller synchronously — which
+    // used to miss the exact race on the very first boot: this can fire
+    // before register()'s own promise has resolved, so .controller was still
+    // null even though a registration already existed (installing) by the
+    // time boot() calls this. .ready then waits for that same registration
+    // to finish activating before showing the notification.
+    navigator.serviceWorker.getRegistration().then(reg => {
+      if (!reg) return plainFallback();
+      return navigator.serviceWorker.ready
+        .then(r => r.showNotification(title, opts))
+        .then(done);
+    }).catch(plainFallback);
   }
 
   /* Fires when the app opens or returns to the foreground — a local-only PWA
@@ -281,6 +301,31 @@
   }
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') { checkReminders(); checkInsightNudges(); }
+  });
+
+  /* Storage quota exceeded: the app keeps working from memory, but the user
+     must know their changes aren't persisting — a toast alone disappears
+     after 2.6s while the condition itself can last the rest of the session,
+     so this also latches a persistent banner (rendered by exportBanner()
+     above) until a save goes through cleanly.
+
+     00-state.js's save() dispatches cf:save-error and then unconditionally
+     dispatches cf:change right after, whether or not the save itself threw —
+     so a naive "clear the latch on cf:change" listener would immediately
+     undo the very save-error that just set it. saveErroredThisTick marks
+     that the next cf:change belongs to a failed save, so only a cf:change
+     that arrives *without* a preceding save-error in the same tick means
+     storage actually recovered. */
+  let storageFull = false;
+  let saveErroredThisTick = false;
+  document.addEventListener('cf:save-error', () => {
+    saveErroredThisTick = true;
+    toast('Storage is full — changes may not persist. Export a backup now.', 'warn');
+    if (!storageFull) { storageFull = true; render(); }
+  });
+  document.addEventListener('cf:change', () => {
+    if (saveErroredThisTick) { saveErroredThisTick = false; return; }
+    if (storageFull) { storageFull = false; render(); }
   });
 
   /* ---------- install prompt (re-offered, not one-shot) ---------- */
@@ -384,10 +429,11 @@
   function boot() {
     const autoPosted = Store.autoPostDueBills();
     render();
-    checkReminders();
-    checkInsightNudges();
-    if (window.Tour) Tour.maybeAutoStart();
-    if (autoPosted) toast(autoPosted + ' cash-pay bill' + (autoPosted === 1 ? '' : 's') + ' auto-posted for this month');
+    // Registered before checkReminders()/checkInsightNudges() below, not
+    // after — those can fire a notification synchronously on this very call,
+    // and notifyLocal() needs a registration to already exist (even mid
+    // install) for its getRegistration() check to find one instead of
+    // falling back to a plain notification with no action buttons.
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       // updateViaCache: 'none' forces a real network fetch of sw.js on every check —
       // without it, a host that doesn't send Cache-Control on sw.js can let the
@@ -396,6 +442,10 @@
       navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
         .catch(() => { /* offline install is best-effort */ });
     }
+    checkReminders();
+    checkInsightNudges();
+    if (window.Tour) Tour.maybeAutoStart();
+    if (autoPosted) toast(autoPosted + ' cash-pay bill' + (autoPosted === 1 ? '' : 's') + ' auto-posted for this month');
   }
   if (window.Lock) Lock.guard(boot); else boot();
 })();
