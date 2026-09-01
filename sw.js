@@ -3,7 +3,13 @@
    often redirect the latter to the former, and caching (then replaying) a
    redirected Response for a navigation is what Chrome's install check flags as
    "Response served by service worker has redirections". */
-const CACHE = 'household-finance-v11';
+const CACHE = 'household-finance-v12';
+// Runtime hits (e.g. the PDF engine, fetched from cdnjs) live in their own
+// cache, not versioned with CACHE above — so they survive a deploy instead
+// of being wiped and re-downloaded on every version bump, and so iOS's
+// whole-cache eviction under storage pressure can't take the app shell down
+// alongside whatever scratch content happened to be sitting next to it.
+const RUNTIME_CACHE = 'household-finance-runtime';
 const SHELL = [
   './',
   './manifest.json',
@@ -86,7 +92,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE && k !== RUNTIME_CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -122,7 +128,9 @@ self.addEventListener('fetch', e => {
       fetch(e.request).then(res => {
         if (res.ok && !res.redirected && (e.request.url.startsWith(self.location.origin) || e.request.url.includes('cdnjs.cloudflare.com'))) {
           const copy = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, copy));
+          // Uncaught: a QuotaExceededError here was an unhandled rejection
+          // inside the service worker, with nothing to surface it or retry.
+          caches.open(RUNTIME_CACHE).then(c => c.put(e.request, copy)).catch(() => { /* full — this fetch already succeeded, only the cache write failed */ });
         }
         return res;
       }).catch(() =>
