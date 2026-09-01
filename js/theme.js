@@ -18,6 +18,11 @@
       btn.innerHTML = window.Icons ? Icons[isDark ? 'sun' : 'moon'] : '';
       btn.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
     });
+    // Standalone's status bar / task-switcher chrome reads this meta, not
+    // data-theme — without it the bar stays pinned to the light navy even
+    // after the rest of the app goes dark.
+    const meta = document.querySelector('meta[name=theme-color]');
+    if (meta) meta.content = getComputedStyle(document.documentElement).getPropertyValue('--navy-deep').trim();
   }
   function toggle() {
     const next = effective() === 'dark' ? 'light' : 'dark';
