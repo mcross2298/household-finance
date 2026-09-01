@@ -154,7 +154,8 @@ body {
   background: var(--bg);
   color: var(--ink);
   line-height: 1.45;
-  min-height: 100vh;
+  min-height: 100vh; /* fallback for engines that don't know dvh yet */
+  min-height: 100dvh; /* excludes iOS Safari's collapsible address bar, so content never sits under the fixed bottom nav */
 }
 a { color: var(--link); }
 button { font: inherit; cursor: pointer; }
@@ -164,7 +165,7 @@ h2 { font-size: 1.02rem; font-weight: 700; }
 h3 { font-size: .95rem; font-weight: 700; }
 
 /* ---------- layout ---------- */
-.app { display: flex; min-height: 100vh; }
+.app { display: flex; min-height: 100vh; min-height: 100dvh; }
 .main-col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .view { flex: 1; outline: none; }
 .page { max-width: 1040px; margin: 0 auto; padding: 18px 16px calc(84px + var(--sab)); display: flex; flex-direction: column; gap: 14px; }
@@ -206,7 +207,7 @@ h3 { font-size: .95rem; font-weight: 700; }
     display: flex; flex-direction: column;
     width: 232px; flex-shrink: 0;
     background: var(--navy); color: var(--on-navy);
-    position: sticky; top: 0; height: 100vh;
+    position: sticky; top: 0; height: 100vh; height: 100dvh;
   }
   .page { padding: 26px 28px 40px; }
 }
@@ -592,6 +593,11 @@ input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; accent-color
 /* ---------- import ---------- */
 .drop-card { border: 2px dashed var(--drop-line); box-shadow: none; background: var(--drop-bg); }
 .drop-card.drag { border-color: var(--gold); background: var(--drop-drag-bg); }
+/* pdf.js's one-time ~1MB download can take 20-40s on a slow connection — this
+   keeps the zone visibly inert for that whole stretch instead of only the
+   2.6s a toast lives for, which is what let a second drop mid-download
+   silently overwrite the first import's staged rows. */
+.drop-card.loading { opacity: .6; pointer-events: none; }
 .drop-inner { text-align: center; padding: 22px 10px; }
 .drop-ico { font-size: 2rem; color: var(--brand-ink); margin-bottom: 6px; }
 .drop-inner p { color: var(--ink-2); font-size: .88rem; margin: 8px 0 4px; }
