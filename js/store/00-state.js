@@ -81,7 +81,7 @@
       [accounts[4].id]: 4200, [accounts[5].id]: 12000, [accounts[6].id]: 9000
     };
 
-    return {
+    const d = {
       version: 9,
       lastUpdated: new Date().toISOString(),
       needsExport: false,
@@ -134,8 +134,8 @@
       goals: [
         { id: uid(), name: 'Emergency Fund (3 mo)', target: 12000, saved: 4200, monthly: 500 },
         { id: uid(), name: 'Home Down Payment', target: 20000, saved: 8500, monthly: 800, isHouse: true },
-        { id: uid(), name: `Roth IRA — Alex (${year} max)`, target: 7500, saved: 1500, monthly: 500 },
-        { id: uid(), name: `Roth IRA — Sam (${year} max)`, target: 7500, saved: 1200, monthly: 500 },
+        { id: uid(), name: `Roth IRA — Alex (${year} max)`, target: 7500, saved: 1500, monthly: 500, rothPerson: 'Alex' },
+        { id: uid(), name: `Roth IRA — Sam (${year} max)`, target: 7500, saved: 1200, monthly: 500, rothPerson: 'Sam' },
         { id: uid(), name: 'Vacation Fund', target: 3000, saved: 900, monthly: 200 },
         { id: uid(), name: 'New Car Fund', target: 10000, saved: 2500, monthly: 300 }
       ],
@@ -161,6 +161,53 @@
          Rides along in the same JSON blob everything else syncs through. */
       recaps: {}
     };
+    wireRothGoalLinks(d);
+    return d;
+  }
+
+  /* Roth goals were tracked in two unlinked places: data.goals' own `saved`
+     field (edited via the Goals screen's "Add money") and
+     data.invest.roth[person] (edited via the Investments screen's YTD
+     input) -- both claiming to be the same real number, with nothing
+     reconciling them if a household updated one and forgot the other. For
+     any goal tagged rothPerson (seeded that way, or tagged by migrate()
+     for an existing household), `saved` becomes a live pass-through to
+     data.invest.roth[person] instead of an independent stored figure --
+     both screens read and write the same underlying value, so they can no
+     longer drift apart. `target`/`monthly` are untouched; the Roth
+     duplication was specifically about `saved`. Takes the target data
+     object explicitly (not the module-level `data`) so it works
+     identically whether called from seed() (before `data` is reassigned)
+     or migrate() (on the already-assigned `data`). person is a member
+     name (data.members is dynamic here, not a fixed pair) --
+     renameMember()/removeMember() in 02-members.js keep rothPerson in
+     sync when a linked member is renamed or removed. */
+  function wireRothGoalLinks(d) {
+    if (!d.invest || !d.invest.roth) return;
+    for (const g of d.goals || []) {
+      if (!g.rothPerson) continue;
+      // Reads g.rothPerson live on every access (not a captured `person`
+      // const) so renameMember()'s update to g.rothPerson takes effect on
+      // an already-wired goal immediately, without needing a re-wire.
+      Object.defineProperty(g, 'saved', {
+        enumerable: true, configurable: true,
+        get() { return +d.invest.roth[g.rothPerson] || 0; },
+        set(v) { d.invest.roth[g.rothPerson] = Math.max(0, +v || 0); }
+      });
+    }
+  }
+  /* Reverses wireRothGoalLinks for one goal -- called from removeMember()
+     when the member it's linked to is being removed, so the goal survives
+     (with its last known balance frozen in as a plain, independently-
+     editable value) instead of silently reading 0 forever from a roth key
+     that's about to be deleted. Captures the live value BEFORE removing
+     the accessor, since after unlinking there's no getter left to read
+     data.invest.roth[person] through. */
+  function unlinkRothGoal(g) {
+    if (!g.rothPerson) return;
+    const last = +g.saved || 0;
+    delete g.rothPerson;
+    Object.defineProperty(g, 'saved', { value: last, writable: true, enumerable: true, configurable: true });
   }
 
   let data = null;
@@ -187,7 +234,25 @@
     // an older client build could still be carrying the field even after the
     // version number is bumped.
     delete data.wedding;
-    if (v >= 14) return;
+    // Also unconditional, same reasoning: a goal named like a Roth IRA
+    // entry but missing the rothPerson tag (an old backup, a synced
+    // payload from a device on an older build) would otherwise keep its
+    // stale independent `saved` figure instead of picking up the live
+    // link to data.invest.roth[person] -- see wireRothGoalLinks() above.
+    // Best-effort name match against the household's actual roster: a
+    // goal renamed away from mentioning a member's name keeps today's
+    // independent-saved behavior rather than being force-linked, and
+    // when more than one member name appears in a goal's name the
+    // longest (most specific) match wins.
+    for (const g of data.goals || []) {
+      if ('rothPerson' in g) continue;
+      const n = (g.name || '').toLowerCase();
+      if (!n.includes('roth')) continue;
+      const candidates = (data.members || []).filter(m => n.includes(m.toLowerCase()));
+      if (candidates.length) g.rothPerson = candidates.reduce((a, b) => b.length > a.length ? b : a);
+    }
+    wireRothGoalLinks(data);
+    if (v >= 15) return;
     if (v < 2) {
       data.rules = data.rules || [];
       data.importBatches = data.importBatches || [];
@@ -243,7 +308,9 @@
     if (v < 13) {
       data.recaps = data.recaps || {};
     }
-    data.version = 14;
+    // v15's rothPerson tagging/wireRothGoalLinks() above is already applied
+    // unconditionally, same reasoning as reminders/wedding above.
+    data.version = 15;
     save();
   }
   function save() {
