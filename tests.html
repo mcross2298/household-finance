@@ -92,6 +92,53 @@
     const gm = S.goalMeta(g);
     t('goalMeta months = ceil(remaining/monthly)', gm.months === 3 && near(gm.pct, 0.25), JSON.stringify(gm));
 
+    /* Roth goal <-> Investments reconciliation: a goal's `saved` is a live
+       pass-through to data.invest.roth[rothPerson], not an independent
+       stored figure, so the two screens can no longer drift apart. Ported
+       from Cross-Household- (fixed Mike/Bri pair there); here rothPerson
+       is a member name since this repo's roster is dynamic, so rename/
+       remove also need covering. */
+    const alexRothGoal = S.data.goals.find(x => x.rothPerson === 'Alex');
+    const samRothGoal = S.data.goals.find(x => x.rothPerson === 'Sam');
+    t('seeded Roth goals are tagged with rothPerson', !!alexRothGoal && !!samRothGoal,
+      JSON.stringify({ alex: !!alexRothGoal, sam: !!samRothGoal }));
+    if (alexRothGoal) {
+      t('Roth goal.saved reads live from data.invest.roth[person]',
+        near(alexRothGoal.saved, S.rothMeta('Alex').ytd), JSON.stringify({ goalSaved: alexRothGoal.saved, ytd: S.rothMeta('Alex').ytd }));
+      S.data.invest.roth.Alex = 3000;
+      t('changing data.invest.roth.Alex is reflected in the goal (Investments -> Goals)',
+        near(alexRothGoal.saved, 3000), alexRothGoal.saved);
+      alexRothGoal.saved = 4500;
+      t('setting the goal\'s saved writes through to data.invest.roth (Goals -> Investments)',
+        near(S.data.invest.roth.Alex, 4500), S.data.invest.roth.Alex);
+      t('goalMeta on a Roth goal reflects the live-linked saved figure',
+        near(S.goalMeta(alexRothGoal).pct, 4500 / alexRothGoal.target, 0.001), JSON.stringify(S.goalMeta(alexRothGoal)));
+    }
+    t('a plain (non-Roth) goal keeps its own independent saved field, unaffected',
+      (() => { g.saved = 999; return g.saved === 999 && S.data.invest.roth.Alex !== 999; })());
+
+    /* Roth linkage follows a rename, and survives a removal by unlinking
+       into a plain figure instead of silently reading 0. Uses a scratch
+       member (not Alex/Sam) so it doesn't disturb the rest of the suite,
+       which assumes the seeded two-person roster. */
+    S.addMember('RothTestPerson');
+    const scratchGoal = { id: S.uid(), name: 'Roth IRA — RothTestPerson (test)', target: 5000, saved: 0, monthly: 100, rothPerson: 'RothTestPerson' };
+    S.data.goals.push(scratchGoal);
+    wireRothGoalLinks(S.data); // the real function (bare global, same top-level scope as tests.html itself), not a hand-rolled copy
+    scratchGoal.saved = 750;
+    S.renameMember('RothTestPerson', 'RothTestRenamed');
+    t('renameMember moves a linked goal\'s rothPerson tag with it',
+      scratchGoal.rothPerson === 'RothTestRenamed', scratchGoal.rothPerson);
+    t('the renamed goal still reads the same live balance after the rename',
+      near(scratchGoal.saved, 750), scratchGoal.saved);
+    S.removeMember('RothTestRenamed');
+    t('removeMember unlinks the goal instead of leaving it reading a deleted key',
+      !scratchGoal.rothPerson && near(scratchGoal.saved, 750), JSON.stringify({ rothPerson: scratchGoal.rothPerson, saved: scratchGoal.saved }));
+    scratchGoal.saved = 900;
+    t('once unlinked, saved is a plain field again (no roth key resurrected)',
+      scratchGoal.saved === 900 && !('RothTestRenamed' in S.data.invest.roth), JSON.stringify(S.data.invest.roth));
+    S.data.goals = S.data.goals.filter(x => x.id !== scratchGoal.id); // scratch cleanup
+
     /* house scenario */
     const hs = S.houseScenario({ price: 300000, downPct: 10 });
     t('house P&I ≈ amortization formula', near(hs.pi, 270000 * (0.065 / 12) / (1 - Math.pow(1 + 0.065 / 12, -360)), 0.5), hs.pi.toFixed(2));

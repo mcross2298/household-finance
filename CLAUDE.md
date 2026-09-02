@@ -133,6 +133,19 @@ UI/UX-visible change without checking whether either surface needs a touch.
 - `incomes` and `invest.roth` are objects keyed by member name (not a fixed
   `mike`/`bri` pair) — `Store.incomeTotal()` and `Store.rothMeta(name)` iterate
   `data.members`.
+- A goal tagged `rothPerson: '<member name>'` has a live `saved` — a
+  `wireRothGoalLinks()` getter/setter (`js/store/00-state.js`) that reads
+  and writes `data.invest.roth[rothPerson]` instead of an independently
+  stored figure, so the Goals screen's "Add money" and the Investments
+  screen's YTD input can't drift apart. The getter reads `g.rothPerson`
+  live (not a value captured when the link was installed), so
+  `renameMember` can just update the tag in place and the link keeps
+  working. `renameMember`/`removeMember` (`js/store/02-members.js`) both
+  cascade it — a rename moves the tag with the roth balance;
+  `removeMember` calls `unlinkRothGoal()` first, which freezes the last
+  live value into a plain `saved` field before the roth key is deleted, so
+  the goal survives with its balance intact instead of reading a
+  now-missing key as 0.
 - Schema changes go through `migrate()` in `js/store/00-state.js`, gated on
   `data.version`.
   Each step must be additive so a backup from any older version upgrades in

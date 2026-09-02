@@ -39,6 +39,11 @@
     if (data.invest && data.invest.roth && oldName in data.invest.roth) {
       data.invest.roth[next] = data.invest.roth[oldName]; delete data.invest.roth[oldName];
     }
+    // A Roth-linked goal's `saved` reads through to data.invest.roth[rothPerson]
+    // (see wireRothGoalLinks() in 00-state.js) -- move with the same rename so
+    // the goal keeps pointing at the (now-renamed) real balance above, not a
+    // just-deleted key.
+    data.goals.forEach(g => { if (g.rothPerson === oldName) g.rothPerson = next; });
     if (data.payCycles && oldName in data.payCycles) {
       data.payCycles[next] = data.payCycles[oldName]; delete data.payCycles[oldName];
     }
@@ -57,6 +62,12 @@
     data.accounts.forEach(a => { if (a.owner === name) a.owner = SHARED; });
     data.rules.forEach(r => { if (r.who === name) r.who = SHARED; });
     delete data.incomes[name];
+    // Unlink before deleting the roth balance a Roth-linked goal reads
+    // through (see wireRothGoalLinks()/unlinkRothGoal() in 00-state.js) --
+    // captures the last known value into the goal's own `saved` field so
+    // it survives as a plain, independently-editable figure instead of
+    // silently reading 0 forever from a key that's about to be gone.
+    data.goals.forEach(g => { if (g.rothPerson === name) unlinkRothGoal(g); });
     if (data.invest && data.invest.roth) delete data.invest.roth[name];
     if (data.payCycles) delete data.payCycles[name];
     save();
