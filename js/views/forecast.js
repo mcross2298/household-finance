@@ -100,7 +100,7 @@
           <div class="card-head"><h2>Projected liquid balance</h2><span class="card-note">checking + savings, 12 months out</span></div>
           <div id="fc-chart"></div>
           <p class="help">Each month: + take-home ${S.fmt$(fc.income, 0)} − budget ${S.fmt$(fc.budget, 0)}
-            − Roth contributions ${S.fmt$(fc.rothMonthly, 0)} − wedding payments − planned one-offs.
+            − Roth contributions ${S.fmt$(fc.rothMonthly, 0)} − planned one-offs.
             Moving money into savings goals stays liquid, so the ${S.fmt$(goalCommitted, 0)}/mo earmarked for goals is context, not an outflow.
             Amber months dip under one month of budget; red is below zero.</p>
         </section>
@@ -127,7 +127,6 @@
       fc.months.map(p => ({
         ym: p.ym, value: p.balance, tone: p.tone === 'ok' ? null : p.tone,
         tip: (p.delta >= 0 ? '+' : '−') + S.fmt$(Math.abs(p.delta), 0).slice(1) + ' this month'
-          + (p.wedding ? ' · wedding ' + S.fmt$(p.wedding, 0) : '')
           + (p.planned ? ' · planned ' + S.fmt$(p.planned, 0) : '')
       })),
       { empty: 'Take a balance snapshot to start the forecast.' });

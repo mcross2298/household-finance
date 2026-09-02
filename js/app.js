@@ -6,7 +6,7 @@
     home: 'Dashboard', summary: 'Executive Summary', transactions: 'Transactions', import: 'Import',
     assistant: 'Ask',
     budget: 'Budget', calendar: 'Bill Calendar', goals: 'Savings Goals',
-    house: 'House Plan', invest: 'Investments', wedding: 'Wedding Payoff',
+    house: 'House Plan', invest: 'Investments',
     networth: 'Net Worth', debt: 'Debt Payoff Plan', forecast: 'Forecast', backup: 'Export & Backup'
   };
 
@@ -48,7 +48,7 @@
     document.title = TITLES[r] + " — Household Finance";
     document.querySelectorAll('[data-route]').forEach(a => {
       const active = a.dataset.route === r ||
-        (a.dataset.route === 'plan' && ['summary', 'budget', 'calendar', 'goals', 'house', 'invest', 'wedding', 'networth', 'debt', 'forecast'].includes(r));
+        (a.dataset.route === 'plan' && ['summary', 'budget', 'calendar', 'goals', 'house', 'invest', 'networth', 'debt', 'forecast'].includes(r));
       a.classList.toggle('active', active);
     });
     if (resetScroll) { view.scrollTop = 0; window.scrollTo(0, 0); }
@@ -172,10 +172,10 @@
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   /* ---------- global search + command palette ---------- */
-  /* One box that finds transactions, budget lines, goals, and wedding vendors
-     from any screen — "when did we last pay the vet?" without setting filters
-     — and, pinned above those results, runs quick actions (add a transaction,
-     jump to a screen) so the same box that finds things can also do things. */
+  /* One box that finds transactions, budget lines, and goals from any screen
+     — "when did we last pay the vet?" without setting filters — and, pinned
+     above those results, runs quick actions (add a transaction, jump to a
+     screen) so the same box that finds things can also do things. */
   const PALETTE_RECENTS_KEY = 'cf.paletteRecents';
   const PALETTE_RECENTS_MAX = 6;
   function paletteRecents() {
@@ -250,13 +250,10 @@
         const goals = Store.data.goals.filter(g => has(g.name));
         if (goals.length) groups.push(['Goals', goals.slice(0, 5).map(g =>
           hit(g.name, Store.fmt$(g.saved, 0) + ' of ' + Store.fmt$(g.target, 0), '', () => { location.hash = '#/goals'; }))]);
-        const vendors = Store.data.wedding.vendors.filter(v => has(v.vendor));
-        if (vendors.length) groups.push(['Wedding vendors', vendors.slice(0, 5).map(v =>
-          hit(v.vendor, (v.paid ? 'paid' : 'due ' + Store.fmtDate(v.due)), Store.fmt$(v.amount, 0), () => { location.hash = '#/wedding'; }))]);
       }
       if (!groups.length) {
         box.innerHTML = q.length < 2
-          ? '<p class="help">Keep typing to search transactions, budget lines, goals, and vendors.</p>'
+          ? '<p class="help">Keep typing to search transactions, budget lines, and goals.</p>'
           : '<p class="help">No matches for “' + esc(q) + '”.</p>';
         hits = [];
         return;

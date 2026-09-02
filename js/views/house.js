@@ -17,7 +17,7 @@
     root.innerHTML = `
       <div class="page">
         <div class="page-head"><h1>House Plan</h1></div>
-        <p class="page-sub">Target window: <b>${S.fmtDate(h.targetDate)}</b> — 1–2 years post-wedding. Adjust any assumption and every scenario recalculates.</p>
+        <p class="page-sub">Target window: <b>${S.fmtDate(h.targetDate)}</b>. Adjust any assumption and every scenario recalculates.</p>
 
         <section class="card">
           <div class="card-head"><h2>Assumptions</h2></div>

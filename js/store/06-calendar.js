@@ -22,12 +22,12 @@
   }
 
   /* Everything with a date (or that should have one) in a month: Fixed budget
-     lines (due on their dueDay, "undated" until one is set), any budget line
-     with a renewal date set (insurance policies, contract terms — any type,
-     not just Fixed), and wedding vendor payments. posted comes from M1's bill
-     matching, so paying a bill checks it off the calendar automatically. A
-     renewal never has a "posted" concept of its own — it just ages through
-     upcoming/soon/overdue by date, same as everything else here. */
+     lines (due on their dueDay, "undated" until one is set), and any budget
+     line with a renewal date set (insurance policies, contract terms — any
+     type, not just Fixed). posted comes from M1's bill matching, so paying a
+     bill checks it off the calendar automatically. A renewal never has a
+     "posted" concept of its own — it just ages through upcoming/soon/overdue
+     by date, same as everything else here. */
   function monthSchedule(ym) {
     const month = ym || thisMonth();
     const st = budgetLineStatus(month);
@@ -46,11 +46,6 @@
     for (const b of data.budget) {
       if (!b.renewalDate || b.renewalDate.slice(0, 7) !== month) continue;
       items.push({ kind: 'renewal', id: b.id, name: b.name, amount: 0, due: b.renewalDate, posted: false, section: b.section });
-    }
-    for (const v of data.wedding.vendors) {
-      if (v.due && v.due.slice(0, 7) === month && (+v.amount || 0) > 0) {
-        items.push({ kind: 'wedding', id: v.id, name: v.vendor, amount: +v.amount || 0, due: v.due, posted: !!v.paid });
-      }
     }
     // Detected recurring charges the household never told the app about,
     // overlaid alongside the declared schedule above — predictions only
@@ -100,8 +95,8 @@
     return pool.filter(i => i.due && !i.posted && dayDiff(today, i.due) <= horizon)
       .sort((a, b) => a.due < b.due ? -1 : 1);
   }
-  /* Bills (and wedding payments) that deserve a reminder right now: due within
-     daysAhead, not posted, not already reminded for this due date. */
+  /* Bills that deserve a reminder right now: due within daysAhead, not
+     posted, not already reminded for this due date. */
   function dueForReminder() {
     const r = data.reminders;
     if (!r || !r.enabled) return [];

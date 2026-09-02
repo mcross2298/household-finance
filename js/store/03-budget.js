@@ -1,4 +1,4 @@
-/* ---- derived numbers — budget/income/goals/house/wedding/insights, safe-to-spend ---- */
+/* ---- derived numbers — budget/income/goals/house/insights, safe-to-spend ---- */
 'use strict';
 
   /* ---------- derived numbers ---------- */
@@ -121,10 +121,6 @@
     };
   }
 
-  function weddingRemaining() {
-    return data.wedding.vendors.reduce((s, v) => s + (v.paid ? 0 : (+v.amount || 0)), 0);
-  }
-
   /* Total saved vs. total target across every savings goal (house, Roth, emergency, etc.) —
      the single rollup number for "how are we doing overall". Frozen buckets keep their
      saved balance in the total (it's real money) but drop out of target/monthly so a
@@ -139,8 +135,8 @@
   }
 
   /* Rules-based alerts surfaced on the Dashboard: budget overruns, goals outpacing
-     surplus, house plan falling behind its target date, upcoming wedding payments,
-     and milestones worth celebrating. Sorted worst-first, capped so it stays scannable. */
+     surplus, house plan falling behind its target date, and milestones worth
+     celebrating. Sorted worst-first, capped so it stays scannable. */
   function insights() {
     const out = [];
     const month = thisMonth();
@@ -269,15 +265,6 @@
       }
     }
 
-    const soonCutoff = new Date(); soonCutoff.setDate(soonCutoff.getDate() + 14);
-    const dueSoon = data.wedding.vendors.filter(v => !v.paid && v.due && new Date(v.due) <= soonCutoff && (+v.amount || 0) > 0);
-    if (dueSoon.length) {
-      out.push({ tone: 'warn', text: `${dueSoon.length} wedding vendor payment${dueSoon.length === 1 ? '' : 's'} due within 2 weeks (${dueSoon.map(v => v.vendor).join(', ')}).`, href: '#/wedding' });
-    }
-    const weddingTotal = data.wedding.vendors.reduce((s, v) => s + (+v.amount || 0), 0);
-    if (weddingTotal > 0 && weddingRemaining() === 0) {
-      out.push({ tone: 'good', text: 'Wedding is fully paid off 🎉 — that budget now flows to the House Plan.', href: '#/house' });
-    }
     data.goals.forEach(g => {
       if ((+g.target || 0) > 0 && (+g.saved || 0) >= (+g.target || 0)) {
         out.push({ tone: 'good', text: `${g.name} is fully funded 🎉`, href: '#/goals' });
@@ -315,11 +302,6 @@
         series: nw,
         latest: nw.length ? nw[nw.length - 1] : null,
         prev: nw.length > 1 ? nw[nw.length - 2] : null
-      },
-      wedding: {
-        remaining: weddingRemaining(),
-        date: data.wedding.date,
-        vendorCount: data.wedding.vendors.length
       },
       debt: {
         accounts: debts.length,

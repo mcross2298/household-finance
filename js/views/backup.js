@@ -25,8 +25,8 @@
 
         <section class="card">
           <div class="card-head"><h2>Full backup (JSON)</h2></div>
-          <p class="help">Everything — budget, income, transactions, goals, house plan, investments,
-             wedding — in one file. This is also the device-to-device handoff: export here, then
+          <p class="help">Everything — budget, income, transactions, goals, house plan, investments
+             — in one file. This is also the device-to-device handoff: export here, then
              restore on another phone or computer to move your data across.</p>
           <div class="btn-row">
             <button class="btn" id="exp-json">${UI.icon("download")}Download backup</button>

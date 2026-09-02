@@ -22,7 +22,7 @@
     { id: 'calendar', route: 'calendar', icon: 'calendar', title: 'Bill Calendar',
       blurb: 'Upcoming bills with due dates, auto-pay tracking, policy and contract renewals, bill and insight reminders, which paycheck covers each one — plus recurring charges it detects from history that you never declared.' },
     { id: 'goals', route: 'goals', icon: 'target', title: 'Savings Goals',
-      blurb: 'Track progress toward the house, wedding, and any other savings target.' },
+      blurb: 'Track progress toward the house and any other savings target.' },
     { id: 'house', route: 'house', icon: 'house', title: 'House Plan',
       blurb: 'Model the down-payment goal and timeline for buying a house.' },
     { id: 'invest', route: 'invest', icon: 'trend', title: 'Investments',
@@ -33,8 +33,6 @@
       blurb: 'Compare snowball vs. avalanche strategies and see the payoff date.' },
     { id: 'forecast', route: 'forecast', icon: 'trend', title: 'Forecast',
       blurb: 'Project account balances forward using your budget and bill schedule.' },
-    { id: 'wedding', route: 'wedding', icon: 'sparkle', title: 'Wedding Payoff',
-      blurb: 'Vendor-by-vendor wedding budget and what’s left to pay.' },
     { id: 'backup', route: 'backup', icon: 'exchange', title: 'Export & Backup',
       blurb: 'Export CSV/JSON backups — the only copy of your data lives in this browser.' }
   ];
