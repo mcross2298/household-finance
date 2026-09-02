@@ -93,7 +93,6 @@ expectEqual('accounts', after.accounts, []);
 expectEqual('snapshots', after.snapshots, {});
 expectEqual('planned', after.planned, []);
 expectEqual('house.scenarios', after.house.scenarios, []);
-expectEqual('wedding.vendors', after.wedding.vendors, []);
 
 // Now sweep every route on this now-fresh household and look for the
 // fingerprint of code that assumed a 2-person roster or non-empty

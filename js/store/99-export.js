@@ -12,7 +12,7 @@
     budgetTotal, incomeTotal, surplus, savingsRate,
     budgetByCategory, budgetByPerson,
     txInMonth, spendByCategory, spendByWho, spendByDay, monthsWithData,
-    goalMeta, houseScenario, weddingRemaining, rothMeta, hysaProjection,
+    goalMeta, houseScenario, rothMeta, hysaProjection,
     paydaysInMonth, paydaysInMonthAll, fundingPaycheck, paycheckAllocations,
     goalsProgress, insights, householdSnapshot,
     saveForecastScenario, deleteForecastScenario,

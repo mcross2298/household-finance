@@ -2,7 +2,7 @@
 /* Design-token gate — the same idea as check-doc-drift.mjs, pointed at the
    stylesheet instead of the docs.
 
-   Three rules, each of which was broken before it existed:
+   Five rules, each of which was broken before it existed:
 
    1. Any token used to paint something on a surface that flips with the theme
       must be redefined in BOTH dark blocks. --navy-soft wasn't, so every link
@@ -21,6 +21,20 @@
       js/motion.js reads its durations back out of it, so a literal here also
       silently desynchronises the JS half.
 
+   4. No raw font-size literal anywhere in the file. Every value the app
+      actually used (34 rem steps, 5 inline-SVG chart px steps) was tokenized
+      as --fs-* / --fs-chart-* rather than collapsed to a smaller scale — a
+      handful of steps would have nudged real text sizes with no way to
+      verify the result pixel-by-pixel, so nothing moved, everything got a
+      name. A raw literal after that point is a genuinely new, unreviewed size.
+
+   5. No raw border-radius literal, except the two structural literals 50%
+      (circle) and 0 (square) — see --r-* in the token block. Unlike
+      font-size, a 1px difference in corner rounding is imperceptible, so a
+      couple of immediate neighbors (3px/9px) were folded into 4px/10px when
+      the scale was built; anything landing outside {--radius, --r-*} now is
+      a new, unrounded value someone typed by hand.
+
    Exits non-zero with the offending lines. Run: node scripts/check-token-drift.mjs */
 
 import { readFileSync } from 'node:fs';
@@ -32,13 +46,23 @@ const lines = src.split('\n');
 /* Tokens allowed to exist only in :root: they're either theme-independent by
    design or they're the light half of a pair whose dark half is a *different*
    token (--link / --brand-ink carry the flipping half). */
+const FS_TOKENS = [
+  '058', '062', '064', '068', '070', '072', '074', '076', '078', '080',
+  '082', '084', '086', '088', '090', '092', '095', '102', '105', '110',
+  '112', '115', '120', '130', '132', '135', '140', '145', '150', '160',
+  '170', '200', '220', '230'
+].map(n => `--fs-${n}`);
+const FS_CHART_TOKENS = ['9', '10', '11', '17', '19'].map(n => `--fs-chart-${n}`);
+const R_TOKENS = ['2', '4', '5', '6', '8', '10', '12', '16', '18', '20', '24'].map(n => `--r-${n}`);
+
 const THEME_INDEPENDENT = new Set([
   '--gold', '--gold-hover', '--navy', '--navy-soft', '--radius', '--sat', '--sab',
   '--motion-fast', '--motion-base', '--motion-emphasis', '--motion-slow',
   '--motion-hold', '--ease-out-quart',
   '--on-navy', '--on-navy-2', '--on-navy-nav', '--on-navy-dim',
   '--on-navy-line', '--on-navy-fill', '--on-navy-fill-hi',
-  '--on-navy-bad', '--on-navy-bad-edge', '--on-gold', '--on-solid'
+  '--on-navy-bad', '--on-navy-bad-edge', '--on-gold', '--on-solid',
+  ...FS_TOKENS, ...FS_CHART_TOKENS, ...R_TOKENS
 ]);
 
 /* Selectors whose surface is the fixed navy chrome or printed paper. */
@@ -111,10 +135,33 @@ for (let i = startLine; i < lines.length; i++) {
   }
 }
 
+// --- rule 4: no raw font-size literal outside the token block ---
+for (let i = startLine; i < lines.length; i++) {
+  const line = lines[i];
+  const m = line.match(/font-size:\s*([0-9.]+)(rem|px|em)\b/);
+  if (m) {
+    errors.push(`${CSS}:${i + 1} raw font-size ${m[1]}${m[2]} — add/use a --fs-* token\n      ${line.trim()}`);
+  }
+}
+
+// --- rule 5: no raw border-radius literal outside the token block, except
+//     the structural literals 50% (circle) and 0 (square) ---
+for (let i = startLine; i < lines.length; i++) {
+  const line = lines[i];
+  const decl = line.match(/border-radius:\s*([^;]+);/);
+  if (!decl) continue;
+  const stripped = decl[1].replace(/var\([^)]*\)/g, '');
+  const raw = stripped.match(/[0-9.]+(?:px|%)?/g);
+  const bad = (raw || []).filter(v => v !== '0' && v !== '50%');
+  if (bad.length) {
+    errors.push(`${CSS}:${i + 1} raw border-radius ${bad.join(', ')} — add/use a --r-* token (or --radius)\n      ${line.trim()}`);
+  }
+}
+
 if (errors.length) {
   console.error(`\ncheck-token-drift: ${errors.length} problem(s)\n`);
   for (const e of errors) console.error('  • ' + e);
   console.error('\nSee the comment at the top of scripts/check-token-drift.mjs for why these three rules exist.\n');
   process.exit(1);
 }
-console.log('check-token-drift: tokens are themed, no raw hex or duration escaped the token blocks.');
+console.log('check-token-drift: tokens are themed, no raw hex/duration/font-size/border-radius escaped the token blocks.');

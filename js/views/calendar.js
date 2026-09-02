@@ -1,6 +1,6 @@
-/* Bill Calendar — the month's bills and wedding payments laid out by due date,
-   expected vs posted (via the import bill-matcher), plus opt-in local reminders
-   and the guided month-end close ritual. */
+/* Bill Calendar — the month's bills laid out by due date, expected vs posted
+   (via the import bill-matcher), plus opt-in local reminders and the guided
+   month-end close ritual. */
 (function () {
   'use strict';
   window.Views = window.Views || {};
@@ -132,8 +132,6 @@
         const b = S.data.budget.find(x => x.id === li.dataset.calBill);
         if (b) dueDayModal(b);
       }));
-    root.querySelectorAll('[data-cal-wedding]').forEach(li =>
-      li.addEventListener('click', () => { location.hash = '#/wedding'; }));
     root.querySelectorAll('[data-cal-renewal]').forEach(li =>
       li.addEventListener('click', () => {
         const b = S.data.budget.find(x => x.id === li.dataset.calRenewal);
@@ -233,20 +231,17 @@
   function row(i, fundedBy) {
     const [tone, label] = STATUS[i.status];
     const pill = label ? `<span class="pill ${tone || 'plain'}">${label}</span>` : '';
-    const attr = i.kind === 'bill' ? `data-cal-bill="${i.id}"`
-      : i.kind === 'renewal' ? `data-cal-renewal="${i.id}"`
+    const attr = i.kind === 'renewal' ? `data-cal-renewal="${i.id}"`
       : i.kind === 'detected' ? `data-cal-detected="${i.id}"`
-      : `data-cal-wedding="${i.id}"`;
+      : `data-cal-bill="${i.id}"`;
     const fp = fundedBy && fundedBy[i.id];
     const fundedMeta = fp && !i.posted ? ` · funded by ${App.esc(fp.person)}'s ${Store.fmtDate(fp.date)} check` : '';
     const meta = i.posted && i.tx ? 'posted ' + Store.fmtDate(i.tx.date)
-      : i.kind === 'wedding' && i.posted ? 'paid'
       : i.kind === 'renewal' ? 'renews ' + Store.fmtDate(i.due)
       : i.kind === 'detected' ? 'expected around ' + Store.fmtDate(i.due) + (i.matchedLine ? ' · tap to set a due day' : ' · tap to review')
       : i.due ? 'due ' + Store.fmtDate(i.due) + fundedMeta
       : 'tap to set a due day';
-    const tag = i.kind === 'wedding' ? ' <span class="cal-tag">wedding</span>'
-      : i.kind === 'renewal' ? ' <span class="cal-tag">renewal</span>'
+    const tag = i.kind === 'renewal' ? ' <span class="cal-tag">renewal</span>'
       : i.kind === 'detected' ? ' <span class="cal-tag detected">detected</span>' : '';
     return `<li class="cal-row status-${i.status}${i.kind === 'detected' ? ' cal-detected' : ''}" ${attr} role="button" tabindex="0">
       <div class="cal-row-main">

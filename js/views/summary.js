@@ -22,7 +22,6 @@
     const nwLatest = snap.netWorth.latest;
     const nwPrev = snap.netWorth.prev;
     const insights = snap.insights;
-    const wedding = snap.wedding.remaining;
     const debtCount = snap.debt.accounts;
     const debtTotal = snap.debt.total;
     const planTiles = renderPlanTiles(S);
@@ -84,24 +83,14 @@
             : `<p class="empty">No recap yet this week. <a href="#/assistant">Ask for one →</a></p>`}
         </section>
 
-        <div class="two-col">
-          <section class="card">
-            <div class="card-head"><h2>Debt</h2></div>
-            ${debtCount ? `<table class="table plain"><tbody>
-              <tr><td>Total balance</td><td class="num">${S.fmt$(debtTotal, 0)}</td></tr>
-              <tr><td>Open accounts</td><td class="num">${debtCount}</td></tr>
-            </tbody></table><div class="card-foot"><a class="card-link" href="#/debt">Payoff plan →</a></div>`
-              : '<p class="empty">No debt accounts on file.</p>'}
-          </section>
-          <section class="card">
-            <div class="card-head"><h2>Wedding</h2></div>
-            ${S.data.wedding.vendors.length ? `<table class="table plain"><tbody>
-              <tr><td>Remaining</td><td class="num">${S.fmt$(wedding, 0)}</td></tr>
-              <tr><td>Date</td><td class="num">${S.fmtDate(S.data.wedding.date)}</td></tr>
-            </tbody></table><div class="card-foot"><a class="card-link" href="#/wedding">Wedding payoff →</a></div>`
-              : '<p class="empty">No wedding budget set up yet.</p>'}
-          </section>
-        </div>
+        <section class="card">
+          <div class="card-head"><h2>Debt</h2></div>
+          ${debtCount ? `<table class="table plain"><tbody>
+            <tr><td>Total balance</td><td class="num">${S.fmt$(debtTotal, 0)}</td></tr>
+            <tr><td>Open accounts</td><td class="num">${debtCount}</td></tr>
+          </tbody></table><div class="card-foot"><a class="card-link" href="#/debt">Payoff plan →</a></div>`
+            : '<p class="empty">No debt accounts on file.</p>'}
+        </section>
 
         <section class="card summary-features">
           <div class="card-head">
@@ -141,7 +130,6 @@
     const houseGoal = goals.find(g => g.isHouse);
     const scA = S.data.house.scenarios[0] ? S.houseScenario(S.data.house.scenarios[0]) : null;
     const rothLine = S.members().map(n => App.esc(n) + ' ' + S.fmt$(S.rothMeta(n).ytd, 0)).join(' · ');
-    const wedding = S.weddingRemaining();
 
     const calLine = () => {
       const sched = S.monthSchedule(S.thisMonth());
@@ -185,8 +173,7 @@
         'HYSA deposit ' + S.fmt$(S.data.invest.hysa.deposit, 0) + '/mo'],
       networth: () => [nwLine(), 'Accounts, snapshots & debt payoff'],
       debt: () => [debtLine(), 'Conservative / Base / Aggressive strategies'],
-      forecast: () => [fcLine(), '12-month cash-flow projection'],
-      wedding: () => [wedding > 0 ? S.fmt$(wedding, 0) + ' remaining' : 'All settled 🎉', 'through ' + S.fmtDate(S.data.wedding.date)]
+      forecast: () => [fcLine(), '12-month cash-flow projection']
     };
 
     const tile = (href, icon, title, line1, line2) => `

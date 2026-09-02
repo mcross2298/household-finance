@@ -157,20 +157,18 @@
 
   /* Net liquid cash flow for one month: take-home income minus recurring
      budget, Roth contributions (money that leaves liquid for investment),
-     wedding payments due, and planned one-offs. Moving money into savings
-     goals stays liquid (checking → HYSA), so goal contributions are context,
-     not an outflow. Factored out of forecast() so estimatedBalance() can
-     roll a single checking-type account forward by the exact same math
-     instead of re-deriving it — one definition of "what moves the liquid
-     pool," not two that can quietly drift apart. */
+     and planned one-offs. Moving money into savings goals stays liquid
+     (checking → HYSA), so goal contributions are context, not an outflow.
+     Factored out of forecast() so estimatedBalance() can roll a single
+     checking-type account forward by the exact same math instead of
+     re-deriving it — one definition of "what moves the liquid pool," not
+     two that can quietly drift apart. */
   function liquidCashFlow(ym, rothMonthly, extraPlanned) {
-    const wedding = data.wedding.vendors.reduce((s, v) =>
-      s + (!v.paid && v.due && v.due.slice(0, 7) === ym ? (+v.amount || 0) : 0), 0);
     const planned = data.planned.reduce((s, p) =>
       s + (p.month === ym ? (+p.amount || 0) : 0), 0)
       + (extraPlanned && extraPlanned.month === ym ? +extraPlanned.amount : 0);
-    const delta = incomeTotal() - budgetTotal() - rothMonthly - wedding - planned;
-    return { wedding, planned, delta };
+    const delta = incomeTotal() - budgetTotal() - rothMonthly - planned;
+    return { planned, delta };
   }
   function activeRothMonthly() {
     return (data.members || []).reduce((s, n) => s + rothMeta(n).monthlyToMax, 0);
@@ -193,10 +191,10 @@
     let ym = thisMonth();
     let bal = start;
     for (let k = 0; k < n; k++) {
-      const { wedding, planned, delta } = liquidCashFlow(ym, rothMonthly, opts.extraPlanned);
+      const { planned, delta } = liquidCashFlow(ym, rothMonthly, opts.extraPlanned);
       bal += delta;
       out.push({
-        ym, delta, balance: bal, wedding, planned,
+        ym, delta, balance: bal, planned,
         tone: bal < 0 ? 'bad' : bal < budget ? 'warn' : 'ok' // under one month of budget = tight
       });
       ym = nextMonth(ym);

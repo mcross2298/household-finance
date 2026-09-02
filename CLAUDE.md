@@ -45,7 +45,7 @@ which before doing anything else:
   - `02-members.js` — WHO, add/rename/remove member (this repo's dynamic
     member roster — Cross-Household- has no equivalent file, since it uses a
     fixed two-person `WHO` array instead; see that repo's own CLAUDE.md)
-  - `03-budget.js` — budget/income/goals/house/wedding/insights, safe-to-spend
+  - `03-budget.js` — budget/income/goals/house/insights, safe-to-spend
   - `04-paycycles.js` — paydays, and `paycheckAllocations(ym)` groups a
     month's due-dated Fixed budget lines by the paycheck that funds them (used
     by the Bill Calendar's "which paycheck covers this" indicator). This repo
@@ -71,7 +71,7 @@ which before doing anything else:
   Summary & Quick Tour" for why this file matters more than its size suggests.
 - `js/views/summary.js` (`Views.summary`, route `#/summary`) — the Executive
   Summary: a one-page financial snapshot (net worth, this month vs. budget,
-  goals, insights, debt, wedding) plus an "app features" grid rendered from
+  goals, insights, debt) plus an "app features" grid rendered from
   `Features`.
 - `js/tour.js` (`window.Tour`) — Quick Tour: a step-by-step modal walkthrough
   over `Features`, auto-launched once on first-ever open (localStorage flag,
@@ -176,10 +176,14 @@ UI/UX-visible change without checking whether either surface needs a touch.
   and PR, so a broken assertion is a red check, not just a missed manual step.
   That workflow runs six jobs total: `money-math` (`scripts/run-tests.mjs`);
   `token-drift` (`scripts/check-token-drift.mjs`), which fails if a raw hex
-  color slipped in instead of a themed design token, or a raw duration
-  slipped into a `transition`/`animation` instead of a `--motion-*` token
+  color slipped in instead of a themed design token, a raw duration slipped
+  into a `transition`/`animation` instead of a `--motion-*` token
   (`js/motion.js` reads its timings back out of those same tokens, so a
-  literal desynchronises the JS half of the motion system too); `a11y`
+  literal desynchronises the JS half of the motion system too), or a raw
+  `font-size`/`border-radius` literal slipped in instead of a `--fs-*` /
+  `--r-*` token (every value the app actually uses is named — see the
+  comments above the token block in `css/styles.css` for why nothing was
+  collapsed to a smaller scale); `a11y`
   (`scripts/check-a11y.mjs`), which checks contrast and 44px touch targets
   across every route in both light and dark themes; `start-fresh`
   (`scripts/check-start-fresh.mjs`, H-I4 — VOC/VOA Kaizen audit), which

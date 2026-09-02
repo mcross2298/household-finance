@@ -46,7 +46,6 @@
     const rate = snap.savingsRate;
     const houseGoal = S.data.goals.find(g => g.isHouse);
     const housePct = houseGoal && houseGoal.target > 0 ? houseGoal.saved / houseGoal.target : 0;
-    const wedding = snap.wedding.remaining;
     const months = S.monthsWithData();
     const spent = S.txInMonth(month).reduce((s, t) => s + (+t.amount || 0), 0);
     const progress = snap.goals;
@@ -146,13 +145,12 @@
               ${dueSoon.length > 3 ? `<li class="due-soon-more">+${dueSoon.length - 3} more →</li>` : ''}
             </ul>` : `<div class="due-soon-none">Nothing due — you're clear.</div>`}
           </a>` : ''}
-          <div class="kpi-grid">
+          <div class="kpi-grid kpi-grid-5">
             ${UI.kpi('Monthly Budget', S.fmt$(budget, 0), 'recurring plan', null, '#/budget')}
             ${UI.kpi('Combined Income', S.fmt$(income, 0), 'take-home / mo', null, '#/budget')}
             ${UI.kpi('Monthly Surplus', S.fmt$(surplus, 0), 'income − budget', surplus < 0 ? 'bad' : 'gold', '#/budget')}
             ${UI.kpi('Savings Rate', S.fmtPct(rate), 'of take-home', rate < 0 ? 'bad' : '', '#/budget')}
             ${UI.kpi('House Fund', S.fmtPct(housePct, 0), S.fmt$(houseGoal ? houseGoal.saved : 0, 0) + ' of ' + S.fmt$(houseGoal ? houseGoal.target : 0, 0), null, '#/house')}
-            ${UI.kpi('Wedding Left', S.fmt$(wedding, 0), 'through ' + S.fmtDate(S.data.wedding.date), null, '#/wedding')}
           </div>
         </section>
 
