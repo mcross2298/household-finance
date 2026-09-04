@@ -28,7 +28,7 @@
     { id: 'invest', route: 'invest', icon: 'trend', title: 'Investments',
       blurb: 'Roth IRA contributions and growth, tracked per household member.' },
     { id: 'networth', route: 'networth', icon: 'bank', title: 'Net Worth',
-      blurb: 'Assets vs. debts over time — between snapshots, accounts show an estimate rolled forward from your last one, one tap to confirm.' },
+      blurb: 'Assets vs. debts over time — between snapshots, accounts show an estimate rolled forward from your last one, one tap to confirm. Type in a real statement balance that doesn’t match, and it explains why before saving instead of overwriting silently.' },
     { id: 'debt', route: 'debt', icon: 'debt', title: 'Debt Payoff Plan',
       blurb: 'Compare snowball vs. avalanche strategies and see the payoff date.' },
     { id: 'forecast', route: 'forecast', icon: 'trend', title: 'Forecast',

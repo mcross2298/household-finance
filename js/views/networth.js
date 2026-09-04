@@ -173,9 +173,47 @@
         if (inp.value !== '') balances[inp.dataset.snap] = Math.max(0, parseFloat(inp.value) || 0);
       });
       if (!Object.keys(balances).length) return App.toast('Enter at least one balance', 'warn');
-      S.saveSnapshot(month, balances);
-      m.close(); App.render(); App.toast('Snapshot saved — net worth updated');
+      const commit = () => {
+        S.saveSnapshot(month, balances);
+        App.render(); App.toast('Snapshot saved — net worth updated');
+      };
+      const mismatches = Object.keys(balances).map(id => {
+        const r = S.reconcileAccount(id, balances[id], month);
+        if (!r || r.matched || r.expected == null) return null;
+        const a = S.data.accounts.find(x => x.id === id);
+        return Object.assign({ acctName: a ? a.name : 'Account' }, r);
+      }).filter(Boolean);
+      m.close();
+      if (mismatches.length) reconcileWarningModal(mismatches, commit);
+      else commit();
     });
+  }
+
+  /* Statement Reconciliation: shown only when a typed-in balance disagrees
+     with what the account's own model (estimatedBalance's debt/HYSA/Checking
+     math) predicted by more than a rounding dollar — the common "it matches"
+     case never sees this and saves exactly as before. Never blocks the save;
+     it's a second look before the number becomes the permanent record, not a
+     gate. */
+  function reconcileWarningModal(mismatches, onSaveAnyway) {
+    const S = Store;
+    const rows = mismatches.map(x => `
+      <div class="recon-row">
+        <div class="recon-row-head">
+          <b>${App.esc(x.acctName)}</b>
+          <span>${S.fmt$(x.actual, 0)} entered vs. ${S.fmt$(x.expected, 0)} modeled</span>
+        </div>
+        <ul class="recon-causes">${x.causes.map(c => `<li>${App.esc(c)}</li>`).join('')}</ul>
+      </div>`).join('');
+    const m = App.modal('Before you save', `
+      <p class="help">${mismatches.length === 1 ? 'One balance doesn’t' : `${mismatches.length} balances don’t`} match what the app modeled. Nothing's broken — this is just worth a glance before it becomes the record.</p>
+      ${rows}
+      <div class="btn-row">
+        <button class="btn gold" id="recon-save">Save anyway</button>
+        <button class="btn ghost" id="recon-back">Go back</button>
+      </div>`);
+    m.el.querySelector('#recon-save').addEventListener('click', () => { m.close(); onSaveAnyway(); });
+    m.el.querySelector('#recon-back').addEventListener('click', m.close);
   }
 
   function acctModal(a, kind) {

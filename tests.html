@@ -397,6 +397,43 @@
         S.estimatedBalance(rothAcct2.id) === null);
     })();
 
+    /* reconcileAccount — Statement Reconciliation. Reuses the accounts and
+       snapshots the estimatedBalance block above just set up, so the
+       comparison sits directly against the exact figures it's built on. */
+    (function () {
+      const ym = S.thisMonth();
+
+      const debtAcct = S.data.accounts.find(a => a.id === 'est-debt');
+      const estD = S.estimatedBalance(debtAcct.id);
+      t('reconcileAccount matches when actual equals the model',
+        S.reconcileAccount(debtAcct.id, estD.balance, ym).matched);
+      const rOff = S.reconcileAccount(debtAcct.id, estD.balance - 50, ym);
+      t('reconcileAccount flags a debt paid down more than modeled as an extra payment',
+        !rOff.matched && /extra payment/i.test(rOff.causes[0]), JSON.stringify(rOff));
+      const rHigh = S.reconcileAccount(debtAcct.id, estD.balance + 50, ym);
+      t('reconcileAccount flags a debt higher than modeled as a missed/partial payment',
+        !rHigh.matched && /missed or partial/i.test(rHigh.causes[0]), JSON.stringify(rHigh));
+      t('reconcileAccount tolerates sub-dollar rounding as a match',
+        S.reconcileAccount(debtAcct.id, estD.balance + 0.4, ym).matched);
+
+      const freshAcct = S.data.accounts.find(a => a.id === 'est-debt-fresh');
+      const rFresh = S.reconcileAccount(freshAcct.id, 500, ym);
+      t('reconcileAccount has nothing to compare with no prior snapshot',
+        rFresh.matched && rFresh.expected === null && rFresh.causes.length === 0);
+
+      const savingsAcct = S.data.accounts.find(a => a.name === 'High-Yield Savings');
+      const estS = S.estimatedBalance(savingsAcct.id);
+      const rSavings = S.reconcileAccount(savingsAcct.id, estS.balance + 60, ym);
+      t('reconcileAccount flags an HYSA above modeled APY/deposit',
+        !rSavings.matched && /base apy/i.test(rSavings.causes[0]), JSON.stringify(rSavings));
+
+      const checkingAcct = S.data.accounts.find(a => a.name === 'Joint Checking');
+      const estC = S.estimatedBalance(checkingAcct.id);
+      const rChecking = S.reconcileAccount(checkingAcct.id, estC.balance - 300, ym);
+      t('reconcileAccount explains a Checking gap without a specific transaction match',
+        !rChecking.matched && rChecking.causes.length >= 1, JSON.stringify(rChecking));
+    })();
+
     /* CSV round trip */
     const csv = S.exportCSV();
     const rows = S.parseCSV(csv);
