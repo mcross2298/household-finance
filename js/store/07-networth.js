@@ -269,6 +269,53 @@
     return null;
   }
 
+  /* ---------- statement reconciliation ---------- */
+
+  /* Compares a balance a household typed in (from a bank statement, or just
+     "what the app shows right now") against what the account's own balance
+     model already predicts, and — only when they disagree by more than a
+     rounding dollar — explains the gap in the same terms that model already
+     uses, rather than a new transaction-matching engine: t.account is
+     freeform text a household types per row, not a foreign key into
+     data.accounts, so attributing a specific transaction to a specific
+     net-worth account isn't information the store actually has. Returns
+     `expected: null` (never a mismatch) when there's nothing to compare
+     against yet — that's a first balance being recorded, not a discrepancy. */
+  function reconcileAccount(accountId, actual, ym) {
+    const acct = data.accounts.find(a => a.id === accountId);
+    if (!acct) return null;
+    const act = Math.round((+actual || 0) * 100) / 100;
+    const est = estimatedBalance(accountId);
+    const expected = est ? est.balance : latestBalance(accountId);
+    if (expected == null) return { accountId, actual: act, expected: null, diff: null, matched: true, causes: [] };
+    const diff = Math.round((act - expected) * 100) / 100;
+    const matched = Math.abs(diff) < 1; // under a dollar isn't worth explaining
+    const causes = [];
+    if (!matched) {
+      if (acct.kind === 'debt') {
+        causes.push(diff < 0
+          ? `Lower than the modeled ${fmt$(acct.payment, 0)}/mo payoff — an extra payment would explain it.`
+          : `Higher than the modeled ${fmt$(acct.payment, 0)}/mo payoff — check for a missed or partial payment, or whether the ${acct.rate}% rate on file is still current.`);
+      } else if (acct.type === 'Savings') {
+        const apy = (data.invest.hysa.apys && data.invest.hysa.apys[1]) || 0;
+        causes.push(diff > 0
+          ? `Higher than modeled at the ${apy}% Base APY scenario — the real rate may be running higher, or an extra deposit landed.`
+          : `Lower than modeled at the ${apy}% Base APY scenario — the real rate may be running lower, or a deposit didn't land.`);
+      } else if (acct.type === 'Checking') {
+        const spent = txInMonth(ym).reduce((s, t) => s + (+t.amount || 0), 0);
+        const spendDiff = Math.round((spent - budgetTotal()) * 100) / 100;
+        if (Math.abs(spendDiff) >= 1) {
+          causes.push(spendDiff > 0
+            ? `Actual spending this month is running ${fmt$(spendDiff, 0)} over the ${fmt$(budgetTotal(), 0)} budgeted — that alone could cover the gap.`
+            : `Actual spending this month is running ${fmt$(Math.abs(spendDiff), 0)} under the ${fmt$(budgetTotal(), 0)} budgeted.`);
+        }
+        causes.push('The model pools every Checking/Savings account into one balance (the same simplification Forecast uses), so more than one liquid account will show some spread here regardless.');
+      }
+      if (!causes.length) causes.push('No specific cause stands out from what the app tracks — worth a quick look at recent transactions.');
+    }
+    return { accountId, actual: act, expected, diff, matched, causes, source: est ? 'estimate' : 'snapshot' };
+  }
+
   /* Import batches: every commit is recorded so a bad import (wrong file, wrong
      month, double drop) reverses in one tap instead of row-by-row deletes. */
   function addImportBatch(source, txIds) {
