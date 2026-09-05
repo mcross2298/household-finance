@@ -347,6 +347,10 @@ h3 { font-size: var(--fs-095); font-weight: 700; }
 .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 @media (min-width: 640px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1000px) { .kpi-grid { grid-template-columns: repeat(6, 1fr); } }
+/* Dashboard's KPI row has 5 tiles (not the 6 the general rule assumes,
+   used elsewhere with a 4-tile grid) — its own wide breakpoint fits them
+   evenly instead of leaving a trailing empty cell. */
+@media (min-width: 1000px) { .kpi-grid-5 { grid-template-columns: repeat(5, 1fr); } }
 .kpi { background: rgba(255, 255, 255, .07); border-radius: var(--r-10); padding: 10px 12px; border-left: 3px solid rgba(255, 255, 255, .25); }
 .kpi.gold { border-left-color: var(--gold); }
 .kpi.bad { border-left-color: var(--on-navy-bad-edge); }

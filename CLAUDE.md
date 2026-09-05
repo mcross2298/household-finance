@@ -163,6 +163,13 @@ UI/UX-visible change without checking whether either surface needs a touch.
 - If you're asked to change the demo's starting numbers or add a new demo
   screen's worth of sample data, edit `seed()` — keep the names and figures
   clearly fictional (this repo is public).
+- **A corrupt payload is never discarded.** `load()` falls back to `seed()`
+  when `localStorage` won't parse, and the `save()` right after would
+  otherwise overwrite the damaged household with the demo one — in an app
+  whose only copy lives in that browser. So the raw string is parked under
+  `<KEY>.corrupt` first, and Export & Backup surfaces it (`corruptRaw()` to
+  download, `discardCorrupt()` to delete) so a person can recover by hand.
+  Keep that ordering if you touch `load()`: park before reseeding.
 
 ## Conventions
 

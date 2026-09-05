@@ -21,7 +21,7 @@
   const DEFAULT_LAYOUT = Object.keys(CARD_LABELS).map(id => ({ id, hidden: false }));
   function loadLayout() {
     let saved = null;
-    try { saved = JSON.parse(localStorage.getItem(LAYOUT_KEY)); } catch (e) { /* ignore */ }
+    try { saved = JSON.parse(localStorage.getItem(LAYOUT_KEY)); } catch (e) { console.warn('Could not read dashboard layout (private mode, corrupted key, or storage error) — using the default order.', e); }
     if (!Array.isArray(saved)) return DEFAULT_LAYOUT.map(c => Object.assign({}, c));
     const known = new Set(Object.keys(CARD_LABELS));
     const kept = saved.filter(c => c && known.has(c.id));
@@ -30,7 +30,7 @@
     return kept;
   }
   function saveLayout(layout) {
-    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) { /* private mode — resets each open */ }
+    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout)); } catch (e) { console.warn('Could not save dashboard layout (private mode, quota, or storage error) — resets each open.', e); }
   }
 
   Views.home = function (root) {
