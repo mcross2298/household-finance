@@ -118,7 +118,13 @@
           <div class="modal-body">${bodyHTML}</div>
         </div>
       </div>`;
-    const close = () => { root.innerHTML = ''; if (opts.onClose) opts.onClose(); };
+    const close = () => {
+      root.innerHTML = '';
+      document.removeEventListener('keydown', onEsc);
+      if (opts.onClose) opts.onClose();
+    };
+    const onEsc = e => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onEsc);
     root.querySelector('.modal-x').addEventListener('click', close);
     root.querySelector('.modal-backdrop').addEventListener('click', e => {
       if (e.target.classList.contains('modal-backdrop')) close();
@@ -185,7 +191,7 @@
     const recents = [id].concat(paletteRecents().filter(x => x !== id)).slice(0, PALETTE_RECENTS_MAX);
     // A device-local UI convenience, not household data — kept out of Store
     // the same way js/lock.js keeps its own config out of Store.
-    try { localStorage.setItem(PALETTE_RECENTS_KEY, JSON.stringify(recents)); } catch (e) { /* private mode */ }
+    try { localStorage.setItem(PALETTE_RECENTS_KEY, JSON.stringify(recents)); } catch (e) { console.warn('Could not save recent search picks (private mode, quota, or storage error).', e); }
   }
   function paletteActions() {
     const jumps = Object.keys(TITLES)
@@ -408,7 +414,7 @@
     const root = document.getElementById('install-banner-root');
     if (!root || !deferredInstallPrompt || isStandalone()) return;
     let dismissedAt = 0;
-    try { dismissedAt = +localStorage.getItem(INSTALL_DISMISS_KEY) || 0; } catch (e) { /* private mode */ }
+    try { dismissedAt = +localStorage.getItem(INSTALL_DISMISS_KEY) || 0; } catch (e) { console.warn('Could not read install-banner dismissal state (private mode or storage error).', e); }
     if (dismissedAt && (Date.now() - dismissedAt) / 86400000 < INSTALL_SNOOZE_DAYS) return;
     root.innerHTML = `
       <div class="install-banner-inner">
@@ -429,7 +435,7 @@
       await prompt.userChoice;
     });
     root.querySelector('#install-dismiss').addEventListener('click', () => {
-      try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch (e) { /* private mode */ }
+      try { localStorage.setItem(INSTALL_DISMISS_KEY, String(Date.now())); } catch (e) { console.warn('Could not record install-banner dismissal (private mode, quota, or storage error) — it may re-appear.', e); }
       root.innerHTML = '';
     });
   }

@@ -211,14 +211,28 @@
   }
 
   let data = null;
+  let corruptPreserved = false; // a broken copy was found on load and set aside
   function load() {
+    let raw = null;
     try {
-      const raw = localStorage.getItem(KEY);
+      raw = localStorage.getItem(KEY);
       if (raw) { data = JSON.parse(raw); migrate(); return; }
-    } catch (e) { /* corrupted storage falls through to reseed */ }
+    } catch (e) {
+      // Never silently discard a broken copy — park it so it can be recovered
+      // by hand (or sent to someone who can fix it) instead of vanishing. This
+      // matters more here than almost anywhere: the reseed below is followed
+      // by save(), which would otherwise overwrite the damaged household with
+      // the demo one, and this browser holds the only copy there is.
+      if (raw) {
+        try { localStorage.setItem(KEY + '.corrupt', raw); corruptPreserved = true; } catch (e2) { /* full */ }
+      }
+    }
     data = seed();
     save();
   }
+  function corruptBackupPreserved() { return corruptPreserved || !!localStorage.getItem(KEY + '.corrupt'); }
+  function discardCorrupt() { localStorage.removeItem(KEY + '.corrupt'); corruptPreserved = false; }
+  function corruptRaw() { return localStorage.getItem(KEY + '.corrupt'); }
   /* Schema upgrades for data saved by older app versions. Each step is additive
      so a backup from any version restores cleanly. */
   function migrate() {

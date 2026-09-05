@@ -60,6 +60,11 @@
             ? `<ul class="health-list">${issues.map(i => `<li>${UI.icon('alert')} ${App.esc(i)}</li>`).join('')}</ul>
                <p class="help">Fix these where they live (Transactions, Budget, Goals) — the app never rewrites your data on its own.</p>`
             : '<p class="help">No issues found — dates, amounts, categories and Who values all check out.</p>'}
+          ${S.corruptBackupPreserved() ? `
+            <div class="callout warn">A corrupted copy of your data was found and set aside instead of deleted.
+              <div class="btn-row"><button class="btn sm" id="corrupt-dl">Download it</button>
+              <button class="btn ghost sm" id="corrupt-del">Discard it</button></div>
+            </div>` : ''}
         </section>
 
         <section class="card danger-zone">
@@ -81,6 +86,16 @@
       App.download('household-finance-backup-' + stamp() + '.json',
         JSON.stringify(S.data, null, 2), 'application/json');
       App.toast('Backup downloaded');
+    });
+    const cdl = root.querySelector('#corrupt-dl');
+    if (cdl) cdl.addEventListener('click', () => {
+      App.download('household-finance-corrupt-' + stamp() + '.json', S.corruptRaw() || '', 'application/json');
+    });
+    const cdel = root.querySelector('#corrupt-del');
+    if (cdel) cdel.addEventListener('click', () => {
+      App.confirmDialog('Discard corrupted copy', 'Delete the preserved corrupted copy for good?', 'Discard', () => {
+        S.discardCorrupt(); App.render(); App.toast('Discarded');
+      });
     });
     root.querySelector('#imp-json').addEventListener('change', e => {
       const f = e.target.files[0];

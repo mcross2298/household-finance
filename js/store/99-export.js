@@ -31,6 +31,7 @@
     matchBudgetLine, budgetLineStatus,
     effectiveBudget, rolloverAdjustmentTotal, autoPostDueBills, underBudgetStreak,
     flexGroups, flexGroupNames, moveFlexAmount,
-    addImportBatch, undoImportBatch, integrityCheck
+    addImportBatch, undoImportBatch, integrityCheck,
+    corruptBackupPreserved, discardCorrupt, corruptRaw
   };
   load();
