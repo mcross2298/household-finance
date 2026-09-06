@@ -1035,7 +1035,7 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 }
 .cal-row.cal-detected .cal-row-name { color: var(--ink-2); }
 .cal-tag.detected { color: var(--ink-3); background: transparent; border: 1px dashed var(--ink-3); }
-.pill.plain { background: var(--track); color: var(--ink-3); }
+.pill.plain { background: var(--track); color: var(--ink-2); }
 
 /* ---------- spending heatmap ---------- */
 .heatmap-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
