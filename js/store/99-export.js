@@ -32,6 +32,6 @@
     effectiveBudget, rolloverAdjustmentTotal, autoPostDueBills, underBudgetStreak,
     flexGroups, flexGroupNames, moveFlexAmount,
     addImportBatch, undoImportBatch, integrityCheck,
-    corruptBackupPreserved, discardCorrupt, corruptRaw
+    corruptBackupPreserved, discardCorrupt, corruptRaw, storagePersisted
   };
   load();
