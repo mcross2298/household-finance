@@ -212,7 +212,24 @@
 
   let data = null;
   let corruptPreserved = false; // a broken copy was found on load and set aside
+  let persistedStorage = null; // null = unknown/unsupported/still pending; true/false once resolved
+  /* Storage Persist API: asks the browser not to silently evict this origin's
+     storage under disk pressure or after inactivity -- mainly a Safari/iOS
+     behavior, and a different failure mode than someone deliberately
+     clearing browsing data (which this neither prevents nor is meant to;
+     "clear site data" removes granted-persistent storage exactly like any
+     other). Best-effort and fire-and-forget: nothing here blocks boot or
+     changes behavior if the browser doesn't support or grants it. */
+  async function requestPersistentStorage() {
+    if (!navigator.storage || !navigator.storage.persist) return;
+    try {
+      persistedStorage = await navigator.storage.persisted();
+      if (!persistedStorage) persistedStorage = await navigator.storage.persist();
+    } catch (e) { /* best-effort -- browser support/heuristics vary, nothing to fall back to */ }
+  }
+  function storagePersisted() { return persistedStorage; }
   function load() {
+    requestPersistentStorage(); // fire-and-forget; see its own comment
     let raw = null;
     try {
       raw = localStorage.getItem(KEY);

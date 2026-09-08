@@ -8,6 +8,7 @@
     const n = S.data.transactions.length;
     const stamp = () => new Date().toISOString().slice(0, 10);
     const issues = S.integrityCheck();
+    const persisted = S.storagePersisted();
 
     root.innerHTML = `
       <div class="page">
@@ -50,8 +51,10 @@
           <div class="card-head"><h2>About this data</h2></div>
           <p class="help">Data lives only in this browser (localStorage) — nothing is sent anywhere.
              That means: back up before clearing browser data, and export a backup any time
-             you've entered something you'd hate to retype. Last updated
-             <b>${new Date(S.data.lastUpdated).toLocaleString()}</b>.</p>
+             you've entered something you'd hate to retype.
+             ${persisted === true ? ' This browser has granted persistent storage, so it also won\'t be silently cleared to free up space.' : ''}
+             ${persisted === false ? ' This browser has not granted persistent storage, so it could in theory be cleared automatically under disk pressure — separately from, and in addition to, someone deliberately clearing browsing data.' : ''}
+             Last updated <b>${new Date(S.data.lastUpdated).toLocaleString()}</b>.</p>
         </section>
 
         <section class="card">
