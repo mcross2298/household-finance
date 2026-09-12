@@ -10,7 +10,7 @@
     { id: 'home', route: 'home', icon: 'home', title: 'Dashboard',
       blurb: 'Safe-to-spend, what’s due in the next few days, this month’s budget vs. actual, and insights, all at a glance.' },
     { id: 'summary', route: 'summary', icon: 'compass', title: 'Executive Summary',
-      blurb: 'A one-page financial health snapshot, plus everything this app can do.' },
+      blurb: 'A one-page financial health snapshot, plus everything this app can do. Export downloads the whole page as a PDF, figures and all, so you can hand it to someone without handing over the app.' },
     { id: 'transactions', route: 'transactions', icon: 'list', title: 'Transactions',
       blurb: 'Every transaction — searchable, filterable, and attributed to a person or Shared. Split one purchase across multiple categories when it doesn’t fit in just one.' },
     { id: 'import', route: 'import', icon: 'upload', title: 'Import',

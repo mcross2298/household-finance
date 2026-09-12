@@ -34,7 +34,10 @@
             <h1>Executive Summary</h1>
             <p class="page-sub">Where things stand right now, and what this app can do.</p>
           </div>
-          <button class="btn ghost sm" id="summary-print">${UI.icon("print")}Print</button>
+          <div class="btn-row" style="margin:0">
+            <button class="btn ghost sm" id="summary-pdf">${UI.icon("download")}Export PDF</button>
+            <button class="btn ghost sm" id="summary-print">${UI.icon("print")}Print</button>
+          </div>
         </div>
 
         <section class="card card-navy summary-hero">
@@ -114,9 +117,52 @@
       </div>`;
 
     root.querySelector('#summary-print').addEventListener('click', () => window.print());
+    root.querySelector('#summary-pdf').addEventListener('click', () => exportPDF(root, month));
     const tourBtn = root.querySelector('#summary-tour');
     if (tourBtn) tourBtn.addEventListener('click', () => { if (window.Tour) Tour.open(0); });
+    /* tour-full.html links back here to start the step-by-step version — the
+       param is consumed once so a later re-render doesn't relaunch it. */
+    if (App.routeParams().tour === '1') {
+      App.clearRouteParams();
+      if (window.Tour) Tour.open(0);
+    }
   };
+
+  /* Export, not print. Print hands the OS a picture of the screen and needs
+     someone standing at a dialog; this writes a real .pdf the browser
+     downloads, the same way the CSV and JSON backups already work, which is
+     the only one of the two that does anything useful from a phone.
+
+     The content is read back off the DOM this view just rendered rather than
+     rebuilt from Store: every figure here is already derived at render time,
+     and a second derivation is a second thing to keep in step. .no-print is
+     honoured, so the buttons and the on-screen heading drop out and the PDF's
+     own cover carries the title instead. */
+  function exportPDF(root, month) {
+    const page = root.querySelector('.summary-page');
+    PDF.save(page, {
+      title: 'Executive Summary',
+      subtitle: 'Household Finance \u00b7 where things stand right now',
+      meta: 'Financial health \u00b7 ' + Store.fmtMonth(month) +
+        ' \u00b7 generated ' + new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      footer: 'Household Finance \u00b7 Executive Summary',
+      filename: 'household-finance-executive-summary-' + month,
+      styles: {
+        'card-note': 'note',
+        'feature-title': 'h3',
+        'feature-blurb': 'p',
+        'plan-line': 'p',
+        'plan-sub': 'note',
+        'help': 'note',
+        'report-kicker': 'eyebrow',
+        'empty': 'p'
+      },
+      pairs: {
+        kpi: { label: '.kpi-label', value: '.kpi-value', sub: '.kpi-sub' },
+        'mini-goal-row': { label: 'span', value: 'b' }
+      }
+    });
+  }
 
   /* Ported from the former standalone Plan hub (js/views/plan.js, removed —
      see CLAUDE.md). Tiles are generated from the Features registry so titles,
