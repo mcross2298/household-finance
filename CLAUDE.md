@@ -76,7 +76,28 @@ which before doing anything else:
 - `js/tour.js` (`window.Tour`) — Quick Tour: a step-by-step modal walkthrough
   over `Features`, auto-launched once on first-ever open (localStorage flag,
   not `Store` data) and re-launchable any time from the Executive Summary's
-  "Take the Quick Tour" button.
+  "Take the Quick Tour" button. Every step also links to `tour-full.html`.
+- `tour-full.html` — the same `Features` registry as one scrollable document:
+  a contents grid plus every step in order, each linking into the real screen.
+  A standalone page, not a route, so it stays out of the registry it renders —
+  an entry for itself would put a step about the tour inside the tour. It is
+  precached in `sw.js`'s `SHELL` like any other shell asset. Note that
+  `check-a11y.mjs` enumerates routes from `js/features.js`, so this page is
+  **not** covered by that gate; its touch targets were measured by hand.
+- `js/pdf.js` (`window.PDF`) — a hand-rolled PDF writer, no library and no
+  build step, behind the Executive Summary's **Export PDF** button. Print
+  already existed and stays: it hands the OS a picture of the screen and needs
+  someone at a dialog, which is most of nothing on a phone. This writes a real
+  `.pdf` the browser downloads, the way the CSV and JSON backups already work.
+  It reads the summary off the **live DOM** rather than re-deriving it from
+  `Store` — every figure there is already computed at render time, and a second
+  derivation is a second thing to keep in step. `.no-print` is honoured.
+  Two things worth knowing before changing it: text is written as WinAnsi
+  bytes, so anything outside that encoding is folded or dropped (`FOLD` — an
+  emoji is dropped on purpose, a byte a reader rejects is worse); and the xref
+  offsets are counted in string length, which is only also the byte length
+  because every character is ≤ 0xFF by then — a UTF-8 `Blob` would silently
+  invalidate all of them.
 - `js/app.js` — hash-based router, modals, toasts, global search.
 - `js/charts.js` — dependency-free inline-SVG charts (bars, donut, trend,
   rings). No charting library.

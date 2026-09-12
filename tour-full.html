@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1F3864">
+  <meta name="description" content="The Quick Tour, every step on one page — Household Finance">
+  <title>Quick Tour — the whole thing · Household Finance</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('householdFinance.theme');
+        if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) { /* private mode etc — falls back to the OS preference */ }
+    })();
+  </script>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Household Finance">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <!-- The Quick Tour one step at a time is the right shape for a first open and
+       the wrong one for looking something up later: there is no way to scan it,
+       search it, or send it to someone. This is the same registry (js/features.js)
+       rendered as a single document, so the two can't say different things. -->
+  <header class="topbar">
+    <a class="topbar-search" href="index.html#/summary" aria-label="Back to the Executive Summary">&#8592;</a>
+    <div class="topbar-title" id="topbar-title">Quick Tour &#183; all of it</div>
+  </header>
+
+  <main class="view">
+    <div class="page" id="tour-full-page">
+      <div class="page-head">
+        <div>
+          <h1>Quick Tour</h1>
+          <p class="page-sub">Every step of the tour, on one page. <span id="tf-count"></span></p>
+        </div>
+      </div>
+
+      <nav class="card" aria-label="Contents">
+        <div class="card-head"><h2>Contents</h2></div>
+        <div class="feature-grid" id="tf-toc"></div>
+      </nav>
+
+      <div id="tf-steps"></div>
+
+      <div class="card">
+        <div class="card-head"><h2>Ready to look around?</h2></div>
+        <p class="empty">Open the app and start from the Dashboard, or step through the tour one screen at a time instead.</p>
+        <div class="btn-row">
+          <a class="btn gold" href="index.html#/home">Open the Dashboard</a>
+          <a class="btn ghost" href="index.html#/summary?tour=1">Run the step-by-step tour</a>
+        </div>
+      </div>
+
+      <p class="help">Household Finance &#183; everything lives in this browser only. Export a JSON backup from Export &amp; Backup to keep a copy.</p>
+    </div>
+  </main>
+
+  <script src="js/icons.js"></script>
+  <script src="js/features.js"></script>
+  <script>
+    (function () {
+      'use strict';
+      var esc = function (s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      };
+      var feats = window.Features || [];
+      var ico = function (n) { return (window.Icons && Icons[n]) || ''; };
+
+      document.getElementById('tf-count').textContent =
+        feats.length + ' screen' + (feats.length === 1 ? '' : 's') + ', in the order the tour walks them.';
+
+      document.getElementById('tf-toc').innerHTML = feats.map(function (f, i) {
+        return '<a class="feature-card" href="#step-' + esc(f.id) + '">' +
+          '<div class="feature-ico" aria-hidden="true">' + ico(f.icon) + '</div>' +
+          '<div><div class="feature-title">' + (i + 1) + '. ' + esc(f.title) + '</div>' +
+          '<div class="feature-blurb">Jump to this step</div></div></a>';
+      }).join('');
+
+      document.getElementById('tf-steps').innerHTML = feats.map(function (f, i) {
+        return '<section class="card" id="step-' + esc(f.id) + '">' +
+          '<div class="card-head">' +
+            '<h2>' + (i + 1) + '. ' + esc(f.title) + '</h2>' +
+            '<span class="card-note">Step ' + (i + 1) + ' of ' + feats.length + '</span>' +
+          '</div>' +
+          '<p>' + esc(f.blurb) + '</p>' +
+          '<div class="card-foot"><a class="card-link" href="index.html#/' + esc(f.route) + '">Open ' + esc(f.title) + ' &rarr;</a></div>' +
+        '</section>';
+      }).join('');
+    })();
+  </script>
+</body>
+</html>

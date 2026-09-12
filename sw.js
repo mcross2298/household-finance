@@ -35,6 +35,7 @@ const SHELL = [
   './js/charts.js',
   './js/ui.js',
   './js/features.js',
+  './js/pdf.js',
   './js/views/dashboard.js',
   './js/views/summary.js',
   './js/views/transactions.js',
@@ -51,6 +52,7 @@ const SHELL = [
   './js/views/backup.js',
   './js/tour.js',
   './js/app.js',
+  './tour-full.html',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png'

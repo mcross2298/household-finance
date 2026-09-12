@@ -3,7 +3,13 @@
    there shows up here automatically. Auto-launches once, the first time the
    app is ever opened (tracked in localStorage, not Store data, so it isn't
    part of a JSON backup and doesn't replay on the other phone). Reachable any
-   time after that via the 🧭 button in the nav or the Executive Summary. */
+   time after that via the 🧭 button in the nav or the Executive Summary.
+
+   Every step also exists as one scrollable document (tour-full.html), linked
+   from each step here. A modal one screen at a time is the right shape for a
+   first open and the wrong one for looking something up later — there is
+   nothing to scan, search or send. Both render this same registry, so there
+   is no second copy of the text that could drift. */
 (function () {
   'use strict';
   const SEEN_KEY = 'householdFinance.tourSeen';
@@ -29,6 +35,7 @@
       <div class="tour-dots" aria-hidden="true">
         ${steps.map((s, n) => `<span class="tour-dot${n === i ? ' active' : ''}"></span>`).join('')}
       </div>
+      <p class="tour-all"><a href="tour-full.html">Read all ${steps.length} steps on one page &rarr;</a></p>
       <div class="btn-row tour-actions">
         ${i > 0 ? '<button class="btn ghost" data-act="back">Back</button>' : '<span></span>'}
         <div class="btn-row" style="margin:0">

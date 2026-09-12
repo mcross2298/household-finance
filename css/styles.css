@@ -1186,3 +1186,6 @@ svg :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .tour-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
 .tour-dot.active { background: var(--gold-ink); }
 .tour-actions { justify-content: space-between; align-items: center; }
+/* The way out of the one-screen-at-a-time shape — see js/tour.js's header. */
+.tour-all { text-align: center; margin: 0 0 4px; }
+.tour-all a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 8px; font-size: var(--fs-082); font-weight: 600; }
