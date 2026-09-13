@@ -34,6 +34,6 @@
     { id: 'forecast', route: 'forecast', icon: 'trend', title: 'Forecast',
       blurb: 'Project account balances forward using your budget and bill schedule.' },
     { id: 'backup', route: 'backup', icon: 'exchange', title: 'Export & Backup',
-      blurb: 'Export CSV/JSON backups — the only copy of your data lives in this browser.' }
+      blurb: 'Export CSV/JSON backups — the only copy of your data lives in this browser. The same screen can put an app lock in front of it: a PIN, Face ID or Touch ID where your device offers it, and an auto-lock after a set idle time. It gates the screen rather than encrypting anything, and a forgotten PIN can only be recovered by restoring a backup — so keep one.' }
   ];
 })();
