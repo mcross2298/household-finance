@@ -524,7 +524,12 @@
     const monthlyToMax = remaining / monthsLeft;
     const payFrequency = inv.payFrequency || 'biweekly';
     const perPaycheckToMax = monthlyToMax * 12 / (PAY_FREQUENCIES[payFrequency] || 26);
-    return { limit, ytd, remaining, monthlyToMax, monthsLeft, perPaycheckToMax, payFrequency };
+    /* What this household says it actually contributes each month, as opposed
+       to monthlyToMax's "what it would take to max by December". Only the
+       former is a cash outflow the forecast may model — see
+       activeRothMonthly() in 07-networth.js. */
+    const monthly = +((inv.rothMonthly || {})[person]) || 0;
+    return { limit, ytd, remaining, monthlyToMax, monthsLeft, perPaycheckToMax, payFrequency, monthly };
   }
   function hysaProjection(apyPct, months) {
     const { balance, deposit } = data.invest.hysa;

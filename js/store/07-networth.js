@@ -208,8 +208,33 @@
     const delta = incomeTotal() - budgetTotal() - rothMonthly - planned;
     return { planned, delta };
   }
+  /* Modeled recurring Roth outflow for the forecast/estimate cash-flow math:
+     the monthly contribution the household actually stated, per member, on
+     the Investments screen. A member who hasn't stated one contributes $0
+     here — NOT rothMeta().monthlyToMax, which used to stand in for it.
+     monthlyToMax answers a different question ("what would it take to max the
+     account by December") and is date-driven rather than plan-driven: it
+     grows every month as the year runs out, then jams at a permanently
+     inflated number once the year turns, because monthsLeft floors at 1 with
+     no recovery. Sampled once and applied to all twelve forecast months, that
+     swing (and eventual permanent error) reads as a real change in the
+     household's finances when nothing changed but the calendar. monthlyToMax
+     is still the right number for the Investments screen's "maxes it by
+     December" line — a labeled what-if, not a modeled cash outflow — so it
+     stays exactly where it is; it just doesn't belong here. An unstated
+     contribution is instead surfaced once, honestly, by
+     rothContributionIssues(). */
   function activeRothMonthly() {
-    return (data.members || []).reduce((s, n) => s + rothMeta(n).monthlyToMax, 0);
+    return (data.members || []).reduce((s, n) => s + rothMeta(n).monthly, 0);
+  }
+
+  /* Members with Roth room left but no stated monthly contribution, so the
+     forecast's $0 for them is visible rather than a silently rosier number. */
+  function rothContributionIssues() {
+    return (data.members || []).filter(n => {
+      const m = rothMeta(n);
+      return m.remaining > 0 && !m.monthly;
+    });
   }
 
   /* 12-month liquid-cash projection. Start = latest Checking+Savings balances. */

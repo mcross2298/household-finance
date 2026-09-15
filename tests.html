@@ -406,6 +406,49 @@
         JSON.stringify(base.excluded));
     })();
 
+    /* activeRothMonthly — the modeled Roth outflow is the household's stated
+       monthly contribution, never rothMeta().monthlyToMax. The load-bearing
+       assertion is the last one: monthlyToMax is date-driven, so a forecast
+       that sampled it would move on the calendar alone. */
+    (function () {
+      const inv = S.data.invest;
+      const savedYtd = JSON.parse(JSON.stringify(inv.roth));
+      const savedMonthly = JSON.parse(JSON.stringify(inv.rothMonthly || {}));
+      const savedYear = inv.rothYear;
+
+      inv.rothMonthly = {};
+      S.data.members.forEach(m => { inv.rothMonthly[m] = 0; });
+      const noneSet = S.forecast(1).rothMonthly;
+      t('a member with no stated monthly contribution is modeled at $0',
+        near(noneSet, 0), String(noneSet));
+      t('rothContributionIssues names every member with room left and nothing set',
+        S.rothContributionIssues().length ===
+          S.data.members.filter(m => S.rothMeta(m).remaining > 0).length,
+        JSON.stringify(S.rothContributionIssues()));
+
+      inv.rothMonthly[S.data.members[0]] = 300;
+      t('the stated contribution is what the forecast models',
+        near(S.forecast(1).rothMonthly, 300), String(S.forecast(1).rothMonthly));
+      t('a member with a stated contribution drops out of rothContributionIssues',
+        !S.rothContributionIssues().includes(S.data.members[0]),
+        JSON.stringify(S.rothContributionIssues()));
+
+      // The regression itself: rolling the Roth year into the past jams
+      // monthsLeft at 1, so monthlyToMax jumps to the whole remaining limit.
+      // The modeled outflow must not move with it.
+      const beforeYearRoll = S.forecast(1).rothMonthly;
+      const maxBefore = S.rothMeta(S.data.members[0]).monthlyToMax;
+      inv.rothYear = new Date().getFullYear() - 1;
+      const maxAfter = S.rothMeta(S.data.members[0]).monthlyToMax;
+      t('the calendar still swings monthlyToMax (the what-if it belongs to)',
+        maxAfter > maxBefore, JSON.stringify({ maxBefore, maxAfter }));
+      t('a stale Roth year does not move the modeled cash outflow',
+        near(S.forecast(1).rothMonthly, beforeYearRoll),
+        JSON.stringify({ beforeYearRoll, after: S.forecast(1).rothMonthly }));
+
+      inv.roth = savedYtd; inv.rothMonthly = savedMonthly; inv.rothYear = savedYear;
+    })();
+
     /* forecast ripple */
     const base = S.forecast(12);
     S.data.planned.push({ id: 'pl1', name: 'test', month: base.months[3].ym, amount: 500 });

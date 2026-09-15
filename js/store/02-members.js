@@ -18,6 +18,7 @@
     data.members.push(name);
     if (!(name in data.incomes)) data.incomes[name] = 0;
     if (data.invest && data.invest.roth && !(name in data.invest.roth)) data.invest.roth[name] = 0;
+    if (data.invest && data.invest.rothMonthly && !(name in data.invest.rothMonthly)) data.invest.rothMonthly[name] = 0;
     data.payCycles = data.payCycles || {};
     if (!(name in data.payCycles)) data.payCycles[name] = { frequency: 'biweekly', anchor: null };
     save();
@@ -38,6 +39,9 @@
     if (oldName in data.incomes) { data.incomes[next] = data.incomes[oldName]; delete data.incomes[oldName]; }
     if (data.invest && data.invest.roth && oldName in data.invest.roth) {
       data.invest.roth[next] = data.invest.roth[oldName]; delete data.invest.roth[oldName];
+    }
+    if (data.invest && data.invest.rothMonthly && oldName in data.invest.rothMonthly) {
+      data.invest.rothMonthly[next] = data.invest.rothMonthly[oldName]; delete data.invest.rothMonthly[oldName];
     }
     // A Roth-linked goal's `saved` reads through to data.invest.roth[rothPerson]
     // (see wireRothGoalLinks() in 00-state.js) -- move with the same rename so
@@ -69,6 +73,7 @@
     // silently reading 0 forever from a key that's about to be gone.
     data.goals.forEach(g => { if (g.rothPerson === name) unlinkRothGoal(g); });
     if (data.invest && data.invest.roth) delete data.invest.roth[name];
+    if (data.invest && data.invest.rothMonthly) delete data.invest.rothMonthly[name];
     if (data.payCycles) delete data.payCycles[name];
     save();
     return true;

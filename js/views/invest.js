@@ -25,7 +25,11 @@
         </div>
         <div class="form-grid">
           <label>Contributed YTD ($)<input class="input" type="number" step="50" id="roth-idx-${i}" value="${m.ytd}"></label>
+          <label>Monthly contribution ($)<input class="input" type="number" step="50" id="roth-mo-${i}" value="${m.monthly}"></label>
         </div>
+        <p class="help">${m.monthly
+          ? `The forecast models ${S.fmt$(m.monthly, 0)}/mo leaving checking for this account.`
+          : 'Unset — the forecast models nothing leaving checking for this account. The "maxes it by December" figure above is a target, not what you contribute.'}</p>
       </section>`;
 
     root.innerHTML = `
@@ -83,6 +87,10 @@
       });
     };
     rothMetas.forEach((r, i) => bindNum('#roth-idx-' + i, v => { inv.roth[r.name] = v; }));
+    rothMetas.forEach((r, i) => bindNum('#roth-mo-' + i, v => {
+      inv.rothMonthly = inv.rothMonthly || {};
+      inv.rothMonthly[r.name] = v;
+    }));
     bindNum('#hysa-bal', v => inv.hysa.balance = v);
     bindNum('#hysa-dep', v => inv.hysa.deposit = v);
     root.querySelectorAll('[data-apy]').forEach(inp => inp.addEventListener('change', () => {
