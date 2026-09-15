@@ -40,7 +40,7 @@
      demo set built inside seed(). */
   function seedAccounts() {
     const a = (name, kind, type, owner, payment, rate) =>
-      ({ id: uid(), name, kind, type, owner, payment: payment || 0, rate: rate || 0 });
+      ({ id: uid(), name, kind, type, owner, payment: payment || 0, rate: rate == null ? null : rate });
     return [
       a('Joint Checking', 'asset', 'Checking', 'Shared'),
       a('High-Yield Savings', 'asset', 'Savings', 'Shared')
@@ -56,7 +56,7 @@
     const b = (name, section, category, type, monthly, notes) =>
       ({ id: uid(), name, section, category, type, monthly, notes: notes || '', flexGroup: null });
     const acct = (name, kind, type, owner, payment, rate) =>
-      ({ id: uid(), name, kind, type, owner, payment: payment || 0, rate: rate || 0 });
+      ({ id: uid(), name, kind, type, owner, payment: payment || 0, rate: rate == null ? null : rate });
 
     const now = new Date();
     const ym = now.toISOString().slice(0, 7);

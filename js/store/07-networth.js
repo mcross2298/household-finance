@@ -74,40 +74,62 @@
   /* Household-wide rollup per strategy: total extra $/mo required across every
      debt with a balance, the slowest debt's payoff month (debts run in parallel
      at that strategy, not snowballed), total interest left, and whether the
-     extra fits inside the current monthly surplus. */
+     extra fits inside the current monthly surplus.
+
+     A debt with no payment on file makes debtPayoff() return months: null for
+     THAT debt, at every multiplier, since a multiplier can't act on a $0
+     base. That used to blank the whole household's summary — one payment-free
+     debt silently erased a payoff date the others alone could answer. Now it's
+     excluded from monthsMax/interestTotal and named in `excluded`, so the
+     summary is a genuine partial answer instead of a false "unknown". Only
+     when EVERY debt is excluded does the summary itself read null. */
   function debtStrategiesSummary() {
     const debts = data.accounts.filter(a => a.kind === 'debt' && (latestBalance(a.id) || 0) > 0);
     const room = Math.max(0, surplus());
     return DEBT_STRATEGIES.map(s => {
-      let extraTotal = 0, interestTotal = 0, monthsMax = null, unknown = false;
+      let extraTotal = 0, interestTotal = 0, monthsMax = null;
+      const excluded = [];
       debts.forEach(a => {
         const strat = debtStrategies(a).find(x => x.key === s.key);
         extraTotal += strat.extra;
-        if (strat.months == null) { unknown = true; return; }
+        if (strat.months == null) { excluded.push(a.name); return; }
         monthsMax = monthsMax == null ? strat.months : Math.max(monthsMax, strat.months);
         interestTotal += strat.interest || 0;
       });
+      const known = debts.length - excluded.length;
       let date = null;
-      if (!unknown && monthsMax != null) {
+      if (monthsMax != null) {
         const d = addMonths(new Date(), monthsMax);
         date = d.toISOString().slice(0, 10);
       }
       return {
         key: s.key, label: s.label, extraTotal,
-        months: unknown ? null : monthsMax, interest: unknown ? null : interestTotal, date,
-        affordable: extraTotal <= room
+        months: monthsMax, interest: known > 0 ? interestTotal : null, date,
+        affordable: extraTotal <= room,
+        excluded
       };
     });
   }
 
   /* Non-optimizing payoff-order hints for households with 2+ debts: snowball
      (smallest balance first, for momentum) and avalanche (highest rate first,
-     cheapest overall). A scannable list, not a scheduler. */
+     cheapest overall). A scannable list, not a scheduler.
+
+     Avalanche needs a real rate to rank on. `rate == null` means "not
+     recorded"; it is not the same claim as a typed-in 0%, and treating it
+     that way sorts an unrated debt to the bottom as if it were confirmed
+     cheapest — exactly backwards for the account most likely to have no APR
+     on file, which in practice tends to carry the household's highest rate.
+     Rated debts are still ranked highest-rate-first; unrated ones are
+     returned separately rather than given a guessed position, so nothing
+     claims a rate-based order for a debt with no rate. */
   function debtPayoffOrder() {
     const debts = data.accounts.filter(a => a.kind === 'debt' && (latestBalance(a.id) || 0) > 0);
     const snowball = [...debts].sort((a, b) => (latestBalance(a.id) || 0) - (latestBalance(b.id) || 0));
-    const avalanche = [...debts].sort((a, b) => (+b.rate || 0) - (+a.rate || 0));
-    return { snowball, avalanche };
+    const rated = debts.filter(a => a.rate != null);
+    const avalancheUnranked = debts.filter(a => a.rate == null);
+    const avalanche = [...rated].sort((a, b) => (+b.rate || 0) - (+a.rate || 0));
+    return { snowball, avalanche, avalancheUnranked };
   }
 
   /* Rolling payoff simulation for an ordered list of debts: each debt keeps
@@ -115,7 +137,19 @@
      given order) also gets `extra` plus every payment freed up by a debt
      that's already hit zero — the actual snowball/avalanche mechanic, not
      just independent per-debt math. Capped at 50 years as a safety valve for
-     a payment that can't realistically clear the balance. */
+     a payment that can't realistically clear the balance.
+
+     The extra-payment pool (`extra` plus every freed minimum) cascades
+     within the same month: if the target clears with pool left over, the
+     remainder goes to the next unpaid debt in order rather than sitting
+     idle until next month. Without this, a target that finishes small
+     (relative to the pool) wastes the difference every month it happens —
+     `pool -= (pay - it.payment)` is what carries it forward: for the debt
+     actually absorbing pool money, `pay - it.payment` is exactly how much
+     of the pool it used, so the rest keeps flowing down the list; for a
+     later debt whose own minimum happens to exceed what it still owes,
+     the same subtraction hands its unused minimum back into the pool too,
+     which is the correct, slightly deeper version of the same rule. */
   function debtRollupPlan(orderedDebts, extra) {
     const items = orderedDebts
       .map(a => ({ name: a.name, balance: latestBalance(a.id) || 0, rate: (+a.rate || 0) / 100 / 12, payment: +a.payment || 0 }))
@@ -132,10 +166,11 @@
         interest += monthInterest;
         it.balance += monthInterest;
       }
-      const target = items.find(x => x.balance > 0);
+      let pool = extra + freed;
       for (const it of items) {
         if (it.balance <= 0) continue;
-        const pay = Math.min(it === target ? it.payment + extra + freed : it.payment, it.balance);
+        const pay = Math.min(it.payment + pool, it.balance);
+        pool -= (pay - it.payment);
         it.balance -= pay;
         if (it.balance <= 0.005) { it.balance = 0; freed += it.payment; order.push({ name: it.name, month: months }); }
       }
@@ -151,7 +186,10 @@
     const order = debtPayoffOrder();
     return {
       snowball: debtRollupPlan(order.snowball, +extra || 0),
-      avalanche: debtRollupPlan(order.avalanche, +extra || 0)
+      // Unranked (no-rate) debts still owe their own minimum every month —
+      // the simulation needs all of them — they just go last in line for
+      // extra dollars, since nothing here claims to know they're cheapest.
+      avalanche: debtRollupPlan(order.avalanche.concat(order.avalancheUnranked), +extra || 0)
     };
   }
 
@@ -295,7 +333,8 @@
       if (acct.kind === 'debt') {
         causes.push(diff < 0
           ? `Lower than the modeled ${fmt$(acct.payment, 0)}/mo payoff — an extra payment would explain it.`
-          : `Higher than the modeled ${fmt$(acct.payment, 0)}/mo payoff — check for a missed or partial payment, or whether the ${acct.rate}% rate on file is still current.`);
+          : `Higher than the modeled ${fmt$(acct.payment, 0)}/mo payoff — check for a missed or partial payment${
+              acct.rate != null ? `, or whether the ${acct.rate}% rate on file is still current` : ', or add this debt’s APR — none is on file yet'}.`);
       } else if (acct.type === 'Savings') {
         const apy = (data.invest.hysa.apys && data.invest.hysa.apys[1]) || 0;
         causes.push(diff > 0

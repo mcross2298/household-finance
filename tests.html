@@ -328,6 +328,84 @@
       JSON.stringify([p0, p100]));
     t('payment below interest flagged', S.debtPayoff({ id: 'x', payment: 10, rate: 8 }, 0).months === null);
 
+    /* debt payoff order, rollup cascade, and partial strategy summaries —
+       ported from Cross-Household-'s M-1/M-2/M-3 audit fixes. A separate
+       set of debts from the one above so these don't interact with it. */
+    (function () {
+      const addDebt = (id, name, payment, rate, balance) => {
+        S.data.accounts.push({ id, name, kind: 'debt', type: 'Loan', owner: 'Shared', payment, rate });
+        S.saveSnapshot(S.thisMonth(), { [id]: balance });
+      };
+
+      // M-2: an account with no APR on file (rate === null) must not be
+      // ranked into the avalanche list as if a 0% rate were confirmed —
+      // it goes in a separate avalancheUnranked bucket instead.
+      addDebt('ord-a', 'Ord Rated A', 50, 20, 1000);
+      addDebt('ord-b', 'Ord Rated B', 80, 10, 2000);
+      addDebt('ord-c', 'Ord Unrated', 25, null, 500);
+      // The test suite shares one Store across the whole file, so other
+      // sections' debts (e.g. the amortization test's 'T' above) are also
+      // live here — assert on membership/order among the ones this block
+      // added, not on exact list lengths.
+      const order = S.debtPayoffOrder();
+      const ordNames = ['Ord Rated A', 'Ord Rated B', 'Ord Unrated'];
+      const avalancheOrd = order.avalanche.filter(a => ordNames.includes(a.name));
+      t('debtPayoffOrder keeps unrated debts out of the ranked avalanche list',
+        order.avalanche.every(a => a.rate != null) && avalancheOrd.length === 2,
+        JSON.stringify(order.avalanche.map(a => [a.name, a.rate])));
+      t('debtPayoffOrder ranks avalanche highest-rate-first',
+        avalancheOrd[0].name === 'Ord Rated A' && avalancheOrd[1].name === 'Ord Rated B');
+      t('debtPayoffOrder still includes every debt in the snowball list',
+        ordNames.every(n => order.snowball.some(a => a.name === n)));
+      t('debtPayoffOrder surfaces the unrated debt separately',
+        order.avalancheUnranked.some(a => a.name === 'Ord Unrated') &&
+        !order.avalanche.some(a => a.name === 'Ord Unrated'));
+
+      // The rollup simulation must still charge the unranked debt's own
+      // minimum every month even though it's not competing for extra $$.
+      const cmp = S.debtPayoffOrderComparison(0);
+      t('debtPayoffOrderComparison still runs with an unrated debt present',
+        !!cmp && cmp.avalanche.months > 0, JSON.stringify(cmp && cmp.avalanche.months));
+    })();
+
+    (function () {
+      // M-1: debtRollupPlan (reached via debtPayoffOrderComparison's
+      // snowball plan, which sorts smallest-balance-first) must cascade
+      // leftover extra-payment pool to the next debt in the SAME month a
+      // target clears, not just via the following month's freed minimum.
+      const addDebt = (id, name, payment, rate, balance) => {
+        S.data.accounts.push({ id, name, kind: 'debt', type: 'Loan', owner: 'Shared', payment, rate });
+        S.saveSnapshot(S.thisMonth(), { [id]: balance });
+      };
+      addDebt('cas-small', 'Cascade Small', 10, 0, 50);
+      addDebt('cas-big', 'Cascade Big', 100, 0, 5000);
+      const plan = S.debtPayoffOrderComparison(100).snowball;
+      // Month 1: pool = 100. Small: min(10+100,50)=50 (paid off), pool -= 40 -> 60.
+      // Big absorbs the remaining 60 of pool the same month.
+      const smallPaid = plan.order.find(o => o.name === 'Cascade Small');
+      t('debtRollupPlan cascades same-month leftover pool to the next debt',
+        !!smallPaid && smallPaid.month === 1, JSON.stringify(plan.order));
+    })();
+
+    (function () {
+      // M-3: a debt with no monthly payment on file (debtPayoff() ->
+      // months: null for it) must be excluded from the household summary
+      // rather than nulling out the whole strategy for every other debt.
+      const addDebt = (id, name, payment, rate, balance) => {
+        S.data.accounts.push({ id, name, kind: 'debt', type: 'Loan', owner: 'Shared', payment, rate });
+        S.saveSnapshot(S.thisMonth(), { [id]: balance });
+      };
+      addDebt('sum-loan', 'Summary Loan', 150, 12, 3000);
+      addDebt('sum-nopay', 'Summary No-Payment Card', 0, 20, 800);
+      const summary = S.debtStrategiesSummary();
+      const base = summary.find(s => s.key === 'base');
+      t('debtStrategiesSummary answers months from the debts it can, not null for all',
+        base.months != null, String(base.months));
+      t('debtStrategiesSummary names the payment-free debt as excluded',
+        Array.isArray(base.excluded) && base.excluded.includes('Summary No-Payment Card'),
+        JSON.stringify(base.excluded));
+    })();
+
     /* forecast ripple */
     const base = S.forecast(12);
     S.data.planned.push({ id: 'pl1', name: 'test', month: base.months[3].ym, amount: 500 });
