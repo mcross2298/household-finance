@@ -63,7 +63,10 @@
             </div>
             <div>
               <b>Avalanche</b> — highest rate first, cheapest overall
-              <ol class="steps">${order.avalanche.map(a => `<li>${App.esc(a.name)} — ${a.rate ? a.rate + '%' : 'no rate set'}</li>`).join('')}</ol>
+              <ol class="steps">${order.avalanche.map(a => `<li>${App.esc(a.name)} — ${a.rate}%</li>`).join('')}</ol>
+              ${order.avalancheUnranked.length ? `
+              <p class="help" style="margin-bottom:4px">Not ranked — add an APR on <a href="#/networth">Net Worth</a> to place these:</p>
+              <ol class="steps">${order.avalancheUnranked.map(a => `<li>${App.esc(a.name)} — no rate on file</li>`).join('')}</ol>` : ''}
             </div>
           </div>
           <p class="help">Once a debt is paid off, roll its full payment into the next one on your chosen list — that's the "snowball"/"avalanche" effect. This app doesn't auto-roll payments; revisit this page as balances change.</p>
@@ -122,7 +125,7 @@
     const S = Store;
     const strategies = S.debtStrategies(a);
     return `<tr>
-      <td>${App.esc(a.name)}<div class="acct-meta">${App.esc(a.type)}${a.rate ? ' · ' + a.rate + '%' : ''}</div></td>
+      <td>${App.esc(a.name)}<div class="acct-meta">${App.esc(a.type)}${a.rate != null ? ' · ' + a.rate + '%' : ''}</div></td>
       <td class="num">${S.fmt$(S.latestBalance(a.id) || 0, 0)}</td>
       <td class="num">${S.fmt$(a.payment || 0, 0)}</td>
       ${strategies.map(s => `<td class="num">${s.months != null ? s.months + ' mo' : '—'}${s.interest != null ? '<div class="acct-meta">' + S.fmt$(s.interest, 0) + ' int.</div>' : ''}</td>`).join('')}

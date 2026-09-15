@@ -34,7 +34,7 @@
       return `<li class="acct-row${est ? ' acct-estimated' : ''}" data-acct="${a.id}" role="button" tabindex="0">
         <div class="acct-main">
           <span class="acct-name">${App.esc(a.name)}${est ? ' <span class="pill plain acct-est-pill">est.</span>' : ''}</span>
-          <span class="acct-meta">${App.esc(a.type)} · ${a.owner}${a.kind === 'debt' && a.payment ? ' · ' + S.fmt$(a.payment, 0) + '/mo' : ''}${a.rate ? ' · ' + a.rate + '%' : ''}</span>
+          <span class="acct-meta">${App.esc(a.type)} · ${a.owner}${a.kind === 'debt' && a.payment ? ' · ' + S.fmt$(a.payment, 0) + '/mo' : ''}${a.rate != null ? ' · ' + a.rate + '%' : ''}</span>
         </div>
         ${est ? `<button class="btn ghost sm acct-confirm" data-confirm="${a.id}" data-confirm-amt="${est.balance}">Confirm</button>` : ''}
         <b class="${est ? 'acct-est-value' : (a.kind === 'debt' && value > 0 ? 'neg' : '')}">${figure}</b>
@@ -62,7 +62,7 @@
         <label class="payoff-slider">Extra <b>${S.fmt$(extra, 0)}</b>/mo
           <input type="range" min="0" max="500" step="25" value="${extra}" data-extra="${a.id}">
         </label>
-        <label class="payoff-slider">Refi rate <b>${rate}%</b> <span class="muted">(now ${a.rate}%)</span>
+        <label class="payoff-slider">Refi rate <b>${rate}%</b> <span class="muted">(now ${a.rate == null ? 'no rate on file' : a.rate + '%'})</span>
           <input type="range" min="0" max="15" step="0.25" value="${rate}" data-refi="${a.id}">
         </label>
         ${whatIf}
@@ -227,7 +227,7 @@
         <label>Owner<select class="select" id="ac-owner">${App.options(Store.WHO, v.owner)}</select></label>
         ${kind === 'debt' ? `
         <label>Monthly payment ($)<input class="input" type="number" step="1" id="ac-payment" value="${v.payment}"></label>
-        <label>APR (%)<input class="input" type="number" step="0.01" id="ac-rate" value="${v.rate}"></label>` : ''}
+        <label>APR (%)<input class="input" type="number" step="0.01" id="ac-rate" value="${v.rate == null ? '' : v.rate}" placeholder="leave blank if unknown"></label>` : ''}
       </div>
       <div class="btn-row">
         <button class="btn gold" id="ac-save">${isNew ? 'Add' : 'Save'}</button>
@@ -241,7 +241,7 @@
         id: isNew ? Store.uid() : a.id, name, kind,
         type: g('#ac-type').value, owner: g('#ac-owner').value,
         payment: kind === 'debt' ? Math.max(0, parseFloat(g('#ac-payment').value) || 0) : 0,
-        rate: kind === 'debt' ? Math.max(0, parseFloat(g('#ac-rate').value) || 0) : 0
+        rate: kind === 'debt' ? (g('#ac-rate').value === '' ? null : Math.max(0, parseFloat(g('#ac-rate').value) || 0)) : 0
       };
       if (isNew) Store.data.accounts.push(next); else Object.assign(a, next);
       Store.save(); m.close(); App.render(); App.toast('Saved');
