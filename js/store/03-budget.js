@@ -206,9 +206,22 @@
     }
     const u = unusualTx(month)[0];
     if (u) {
+      /* `redacted` is what buildContext() (js/views/assistant.js) actually
+         sends to the assistant instead of `text` — this is the one insight
+         whose subject the household didn't choose to name themselves (unlike
+         a merchant they're already used to seeing on the Dashboard), and
+         "unusually large" is exactly the filter most likely to select a
+         medical, legal or otherwise sensitive charge. prettyMerchant() alone
+         isn't enough here: it strips transaction noise (store numbers, card
+         masks, processor codes), not a legitimate business name — "Dr Susan
+         Reynolds Psychiatry LLC" survives it almost verbatim. So the on-device
+         text still names the merchant (cleaned up, same as every sibling
+         insight), but the redacted copy drops it to category and amount only. */
+      const merchant = prettyMerchant(u.description) || '(no description)';
       out.push({
         tone: 'info',
-        text: `Unusually large for ${u.category}: ${u.description || '(no description)'} at ${fmt$(u.amount, 0)}.`,
+        text: `Unusually large for ${u.category}: ${merchant} at ${fmt$(u.amount, 0)}.`,
+        redacted: `Unusually large for ${u.category}: ${fmt$(u.amount, 0)}.`,
         href: txHref({ month, category: u.category })
       });
     }
