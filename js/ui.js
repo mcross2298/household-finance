@@ -78,5 +78,25 @@
      while a stroke icon set sat next to them covering nav only. One family. */
   const icon = name => (window.Icons && Icons[name]) || '';
 
-  window.UI = { stat, kpi, delta, scRow, empty, miniGoals, insightList, icon };
+  /* Where this household's data actually lives right now, for the footer the
+     Executive Summary signs off with. Today that is always "on-device only":
+     this repo ships no window.Cloud and no window.Sync, so the first branch
+     is the only one reachable and the rendered sentence is unchanged.
+
+     It is a function rather than a constant because the sentence is a claim
+     about storage, and a claim about storage should be computed from
+     storage. Cross-Household- shipped the identical line as a hardcoded
+     string, then added cloud backups and device sync underneath it; the
+     string kept printing "on-device only" into reports people hand to
+     lenders. Anyone adding sync here (see SUPABASE.md's drafted direction)
+     changes what this returns rather than having to remember that a footer
+     three files away was quietly asserting otherwise. */
+  function dataResidency() {
+    const signedIn = !!(window.Cloud && Cloud.isSignedIn());
+    if (!signedIn) return 'data lives on-device only';
+    if (window.Sync && Sync.isEnabled()) return 'data lives on this device and syncs to your household\u2019s cloud';
+    return 'data lives on this device, with backups in your household\u2019s cloud';
+  }
+
+  window.UI = { stat, kpi, delta, scRow, empty, miniGoals, insightList, icon, dataResidency };
 })();
