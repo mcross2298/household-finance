@@ -484,6 +484,44 @@
       S.data.accounts.filter(a => a.kind === 'debt').reduce((s, a) => s + (S.latestBalance(a.id) || 0), 0)));
     t('snapshot.insights (lazy) equals insights()', snap.insights.length === S.insights().length);
 
+    /* unusualTx's insight: the on-screen text still names a cleaned-up
+       merchant (same as every sibling insight), but the assistant only ever
+       gets `redacted`, which drops the merchant/description entirely — a
+       one-off unusually large charge is exactly the case most likely to be
+       medical, legal or otherwise sensitive. "Today" is whatever the system
+       clock reads when this suite runs, same convention as the
+       recurring-series block above. */
+    (function () {
+      const savedTx = S.data.transactions;
+      const today = new Date();
+      const iso = d => d.toISOString().slice(0, 10);
+      const monthsAgo = n => iso(S.addMonths(today, -n));
+      const tx = (date, category, description, amount) =>
+        ({ id: S.uid(), date, category, description, amount, who: 'Shared', account: '', notes: '' });
+      S.data.transactions = [
+        tx(monthsAgo(3), 'Dining Out', 'TEXAS ROADHOUSE #417 LANCASTER PA', 58.20),
+        tx(monthsAgo(2), 'Dining Out', 'TEXAS ROADHOUSE #417 LANCASTER PA', 61.40),
+        tx(monthsAgo(1), 'Dining Out', 'TEXAS ROADHOUSE #417 LANCASTER PA', 55.10),
+        tx(iso(today), 'Dining Out', 'DR SUSAN REYNOLDS PSYCHIATRY LLC', 940)
+      ];
+      const ins = S.insights();
+      const u = ins.find(i => /Unusually large/.test(i.text));
+      // prettyMerchant() keeps a short, vowel-less token as an acronym
+      // (PPL, UGI, CVS) rather than title-casing it — "DR" included.
+      t('unusualTx insight shows a cleaned-up merchant on screen',
+        !!u && u.text === 'Unusually large for Dining Out: DR Susan Reynolds Psychiatry LLC at $940.',
+        JSON.stringify(u));
+      t('unusualTx insight\'s redacted copy has no merchant or description at all',
+        !!u && u.redacted === 'Unusually large for Dining Out: $940.',
+        JSON.stringify(u));
+      t('the redacted copy is what a caller mapping insights for external use gets',
+        ins.map(i => i.redacted || i.text).every(line => !/Susan|Reynolds|Psychiatry/.test(line)),
+        JSON.stringify(ins.map(i => i.redacted || i.text)));
+      t('an insight with no redacted field falls back to its own text unchanged',
+        ins.filter(i => i !== u).every(i => (i.redacted || i.text) === i.text));
+      S.data.transactions = savedTx;
+    })();
+
     // Note: Cross-Household-'s harness also checks integrityCheck() (seed
     // passes, bad rows get caught) — that function doesn't exist in this
     // repo yet (a separate, older hardening gap, not part of this port), so

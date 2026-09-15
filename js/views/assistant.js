@@ -3,7 +3,11 @@
    that proxies the Claude API — see worker/index.js. Never sends raw
    transactions, account numbers, or the Supabase session token; the answer
    is always paired with the same insights() links the rest of the app
-   already uses, so it's checkable, not a black box. */
+   already uses, so it's checkable, not a black box. Where an insight names
+   something the household didn't choose to have named externally — a
+   merchant behind an unusually large charge — buildContext() sends that
+   insight's `redacted` variant instead of its on-screen text; see
+   03-budget.js's unusualTx insight. */
 (function () {
   'use strict';
   window.Views = window.Views || {};
@@ -43,7 +47,9 @@
       goals: snap.goals,
       netWorth: snap.netWorth.latest,
       debt: snap.debt,
-      insights: snap.insights.map(i => i.text)
+      // redacted, when an insight has one, is what leaves the device instead
+      // of the on-screen text — see unusualTx's insight in 03-budget.js.
+      insights: snap.insights.map(i => i.redacted || i.text)
     };
   }
 
