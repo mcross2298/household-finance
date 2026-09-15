@@ -26,7 +26,7 @@
     { id: 'house', route: 'house', icon: 'house', title: 'House Plan',
       blurb: 'Model the down-payment goal and timeline for buying a house.' },
     { id: 'invest', route: 'invest', icon: 'trend', title: 'Investments',
-      blurb: 'Roth IRA contributions and growth, tracked per household member.' },
+      blurb: 'Roth IRA contributions and growth, tracked per household member — including what each person actually puts in each month, which is the figure the Forecast models leaving checking (separate from the “maxes it by December” target beside it).' },
     { id: 'networth', route: 'networth', icon: 'bank', title: 'Net Worth',
       blurb: 'Assets vs. debts over time — between snapshots, accounts show an estimate rolled forward from your last one, one tap to confirm. Type in a real statement balance that doesn’t match, and it explains why before saving instead of overwriting silently.' },
     { id: 'debt', route: 'debt', icon: 'debt', title: 'Debt Payoff Plan',

@@ -113,7 +113,7 @@
         </section>
 
         <p class="help report-foot no-print">Generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-          · Household Finance · data lives on-device only.</p>
+          · Household Finance · ${UI.dataResidency()}.</p>
       </div>`;
 
     root.querySelector('#summary-print').addEventListener('click', () => window.print());

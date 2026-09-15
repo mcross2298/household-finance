@@ -152,6 +152,7 @@
       invest: {
         rothLimit: 7500, rothYear: year,
         roth: { Alex: 1500, Sam: 1200 },
+        rothMonthly: { Alex: 300, Sam: 250 },
         hysa: { balance: 6000, deposit: 400, apys: [3.0, 3.8, 4.5] },
         payFrequency: 'biweekly'
       },
@@ -339,9 +340,23 @@
     if (v < 13) {
       data.recaps = data.recaps || {};
     }
+    /* v16 splits "what this household actually puts into a Roth each month"
+       out of rothMeta().monthlyToMax, which used to stand in for it in the
+       forecast. There is no honest figure to migrate from: monthlyToMax is
+       date-driven ("what it would take to max by December"), so adopting
+       whatever it happens to read on upgrade day would bake that month's
+       value in permanently. It starts unset instead, the forecast models $0,
+       and rothContributionIssues() says so on screen until someone fills it
+       in. */
+    if (v < 16 && data.invest) {
+      data.invest.rothMonthly = data.invest.rothMonthly || {};
+      (data.members || []).forEach(m => {
+        if (!(m in data.invest.rothMonthly)) data.invest.rothMonthly[m] = 0;
+      });
+    }
     // v15's rothPerson tagging/wireRothGoalLinks() above is already applied
     // unconditionally, same reasoning as reminders/wedding above.
-    data.version = 15;
+    data.version = 16;
     save();
   }
   function save() {
@@ -391,7 +406,7 @@
         rate: 6.5, termYears: 30, taxRate: 1.6, insuranceYr: 1200,
         pmiRate: 0.75, closingPct: 4, scenarios: []
       },
-      invest: { rothLimit: 7500, rothYear: now.getFullYear(), roth: { You: 0 }, hysa: { balance: 0, deposit: 0, apys: [3.0, 3.8, 4.5] }, payFrequency: 'biweekly' },
+      invest: { rothLimit: 7500, rothYear: now.getFullYear(), roth: { You: 0 }, rothMonthly: { You: 0 }, hysa: { balance: 0, deposit: 0, apys: [3.0, 3.8, 4.5] }, payFrequency: 'biweekly' },
       recaps: {}
     };
   }

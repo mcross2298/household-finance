@@ -11,6 +11,7 @@
     const S = Store;
     const fc = S.forecast(12);
     const hasSnapshots = Object.keys(S.data.snapshots).length > 0;
+    const rothUnset = S.rothContributionIssues();
     const firstBad = fc.months.find(m => m.tone === 'bad');
     const firstWarn = fc.months.find(m => m.tone === 'warn');
     const goalCommitted = S.data.goals.reduce((s, g) => s + (+g.monthly || 0), 0);
@@ -95,6 +96,10 @@
 
         ${hasSnapshots ? '' : `<div class="callout warn">The forecast needs a starting point — take your first
           <a href="#/networth">balance snapshot</a> and it lights up.</div>`}
+        ${rothUnset.length ? `<div class="callout warn">No monthly Roth contribution is set for
+          ${rothUnset.map(n => App.esc(n)).join(', ')}, so this forecast models nothing leaving checking for
+          ${rothUnset.length === 1 ? 'that account' : 'those accounts'}. Set it on
+          <a href="#/invest">Investments</a>.</div>` : ''}
 
         <section class="card">
           <div class="card-head"><h2>Projected liquid balance</h2><span class="card-note">checking + savings, 12 months out</span></div>

@@ -23,6 +23,7 @@
     dueSoonItems, dueForReminder, markReminded, dueInsightNudges, markInsightsNudged,
     closeChecklist, monthSummary, closeMonth,
     balanceAt, latestBalance, netWorthSeries, saveSnapshot, debtPayoff, forecast, estimatedBalance, reconcileAccount,
+    rothContributionIssues,
     debtStrategies, debtStrategiesSummary, debtPayoffOrder, debtRollupPlan, debtPayoffOrderComparison,
     normalizeMerchant, merchantKey, prettyMerchant,
     ruleFor, suggestRule, learnRule, previewRule, suggestedRuleMerchants,
