@@ -3,7 +3,7 @@
    often redirect the latter to the former, and caching (then replaying) a
    redirected Response for a navigation is what Chrome's install check flags as
    "Response served by service worker has redirections". */
-const CACHE = 'household-finance-v12';
+const CACHE = 'household-finance-v13';
 // Runtime hits (e.g. the PDF engine, fetched from cdnjs) live in their own
 // cache, not versioned with CACHE above — so they survive a deploy instead
 // of being wiped and re-downloaded on every version bump, and so iOS's

@@ -151,7 +151,7 @@
     const entries = Object.entries(map).filter(([, v]) => v > 0);
     const total = entries.reduce((s, [, v]) => s + v, 0);
     if (!total) { container.innerHTML = '<p class="empty">No spending recorded for this month yet.</p>'; return; }
-    const size = 210, cx = size / 2, cy = size / 2, r = 74, thick = 26;
+    const size = 210, cx = size / 2, cy = size / 2, r = 74, thick = 20;
     const wrap = document.createElement('div');
     wrap.className = 'donut-wrap';
     const svg = el('svg', { viewBox: `0 0 ${size} ${size}`, width: size, height: size, role: 'img' });
@@ -159,12 +159,19 @@
     entries.forEach(([who, v], idx) => {
       const frac = v / total;
       const a1 = a0 + frac * Math.PI * 2;
-      const gap = entries.length > 1 ? 0.028 : 0; // ~2px surface gap between segments
-      const s = a0 + gap / 2, e = Math.max(s + 0.01, a1 - gap / 2);
+      /* Round caps reach thick/2 past each end of the arc, so each end is
+         pulled in by that much as well as by the ~3px surface gap — otherwise
+         neighbouring caps would overlap. A slice too narrow to hold two caps
+         is drawn flat-ended instead: a round dot there would be wider than
+         its share and run into the next segment's cap. */
+      const gap = entries.length > 1 ? 0.04 + thick / r : 0;
+      const tiny = entries.length > 1 && (a1 - a0) < gap + 0.02;
+      const inset = tiny ? 0.014 : gap / 2;
+      const s = a0 + inset, e = Math.max(s + 0.01, a1 - inset);
       const large = (e - s) > Math.PI ? 1 : 0;
       const p = `M ${cx + r * Math.cos(s)} ${cy + r * Math.sin(s)} A ${r} ${r} 0 ${large} 1 ${cx + r * Math.cos(e)} ${cy + r * Math.sin(e)}`;
       const arc = el('path', {
-        d: p, fill: 'none', stroke: colorFor(who), 'stroke-width': thick, 'stroke-linecap': 'butt',
+        d: p, fill: 'none', stroke: colorFor(who), 'stroke-width': thick, 'stroke-linecap': entries.length > 1 && !tiny ? 'round' : 'butt',
         class: onClick ? 'clickable' : ''
       }, svg);
       if (animates()) {
